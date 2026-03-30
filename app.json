@@ -25,8 +25,10 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "extra": {
+      "API_BASE_URL": "http://localhost:5000"
+    },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -37,6 +39,13 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow CalGenie to access your photos to upload images.",
+          "cameraPermission": "Allow CalGenie to use the camera to take photos."
         }
       ]
     ],

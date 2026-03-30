@@ -1,50 +1,218 @@
-# Welcome to your Expo app 👋
+# CalGenie (Expo React Native App)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+CalGenie is a calorie-tracking app where users can:
 
-## Get started
+- register/login
+- enter profile data (weight, height, age, gender)
+- get BMI category and weight suggestion
+- set a daily calorie goal
+- scan/upload food images (YOLO integration scaffolded)
+- view consumed vs remaining calories and food history
 
-1. Install dependencies
+## Tech stack
 
-   ```bash
-   npm install
-   ```
+- Expo + React Native + TypeScript
+- React Navigation (Native Stack)
+- `expo-image-picker` and `expo-image`
+- Simple app-level auth store via React Context
 
-2. Start the app
+## Current app flow
 
-   ```bash
-   npx expo start
-   ```
+1. Splash -> Login
+2. Register:
+   - calls `POST /api/auth/register`
+   - stores JWT + user in app store
+   - shows BMI category and suggested goal (Gain/Maintain/Lose)
+   - asks user for daily calorie goal
+3. Login:
+   - calls `POST /api/auth/login`
+   - stores JWT + user in app store
+   - redirects to Dashboard
+4. Dashboard:
+   - capture/upload food image
+   - placeholder calorie detection hook
+   - shows consumed/remaining calories
+   - shows food history list
 
-In the output, you'll find options to open the app in a
+## Project structure
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+src/
+  components/            # Reusable UI components
+  navigation/            # Root stack navigator
+  screens/               # Splash, Login, Register, Dashboard
+  services/              # API client + domain services
+    apiClient.ts
+    authService.ts
+    foodDetectionService.ts
+  store/                 # Global app state (auth + daily calorie goal)
+    authStore.tsx
+  types/                 # Shared TypeScript types
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Prerequisites
 
-## Learn more
+- Node.js 18+ (recommended)
+- npm
+- Expo CLI via `npx expo ...`
+- Android Studio emulator / iOS simulator / Expo Go
+- Running backend API server
 
-To learn more about developing your project with Expo, look at the following resources:
+## Installation
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm install
+```
 
-## Join the community
+## Frontend configuration
 
-Join our community of developers creating universal apps.
+Set API base URL in `app.json`:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```json
+"extra": {
+  "API_BASE_URL": "http://localhost:5000"
+}
+```
+
+This value is read by `src/services/apiClient.ts`.
+
+## Backend environment (example)
+
+Use these variables in your backend project:
+
+```env
+DATABASE_URL="postgresql://postgres:admin@localhost:5432/calorie_tracker_db"
+JWT_SECRET="supersecretkey"
+PORT=5000
+```
+
+## Run the app
+
+Start Expo dev server:
+
+```bash
+npm run start
+```
+
+Run directly on Android:
+
+```bash
+npm run android
+```
+
+Run on iOS:
+
+```bash
+npm run ios
+```
+
+Run on web:
+
+```bash
+npm run web
+```
+
+## API endpoints used
+
+### Register
+
+- `POST /api/auth/register`
+
+Request:
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "weight": 70,
+  "height": 175,
+  "age": 25,
+  "gender": "male"
+}
+```
+
+Response:
+
+```json
+{
+  "token": "<jwt_token>",
+  "user": {
+    "name": "John Doe",
+    "bmi": 22.9,
+    "bmiCategory": "Normal"
+  }
+}
+```
+
+### Login
+
+- `POST /api/auth/login`
+
+Request:
+
+```json
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+Response:
+
+```json
+{
+  "token": "<jwt_token>",
+  "user": {
+    "name": "John Doe",
+    "bmi": 22.9,
+    "bmiCategory": "Normal"
+  }
+}
+```
+
+## Important networking note
+
+- `http://localhost:5000` works for:
+  - web in the same machine browser
+  - emulator/simulator when localhost is mapped correctly
+- For a real phone device, use your computer LAN IP (example `http://192.168.1.12:5000`) and make sure phone + PC are on same network.
+
+## Useful scripts
+
+- `npm run start` - start Expo
+- `npm run android` - open Android
+- `npm run ios` - open iOS
+- `npm run web` - run web build
+- `npm run lint` - lint checks
+
+## What is scaffolded vs done
+
+Done:
+
+- Auth integration (`register`, `login`)
+- Auth + daily-goal store
+- Register multi-step onboarding UI
+- Dashboard summary and history UI
+
+Scaffolded (placeholder):
+
+- Food calorie detection from YOLO (`src/services/foodDetectionService.ts`)
+- Persisting auth token/history to local storage
+
+## Troubleshooting
+
+### App cannot reach backend
+
+- Confirm backend is running on port `5000`.
+- Confirm `API_BASE_URL` matches your environment.
+- If on real device, replace `localhost` with LAN IP.
+
+### CORS / network errors on web
+
+- Enable CORS on backend for Expo web origin.
+
+### Login/Register fails with 4xx/5xx
+
+- Verify request body shape matches backend contract.
+- Check backend logs for validation/database errors.
