@@ -1,21 +1,21 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types';
-import { LogoIcon } from '../components/LogoIcon';
-import { FontSize, Spacing } from '../utils/theme';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { LogoIcon } from "../components/LogoIcon";
+import type { RootStackParamList } from "../types";
+import { FontSize, Spacing } from "../utils/theme";
 
-const PRIMARY = '#10B77F';
-const MUTED = '#64748B';
+const PRIMARY = "#10B77F";
+const MUTED = "#64748B";
 
 const SPLASH_DURATION_MS = 3000;
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
 
 export function SplashScreen({ navigation }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace('Login');
+      navigation.replace("Login");
     }, SPLASH_DURATION_MS);
     return () => clearTimeout(timer);
   }, [navigation]);
@@ -35,13 +35,13 @@ export function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: FontSize.xl + 8,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: Spacing.lg,
   },
   titleCal: {
@@ -54,6 +54,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     color: MUTED,
     marginTop: Spacing.sm,
-    fontWeight: '400',
+    fontWeight: "400",
   },
 });

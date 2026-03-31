@@ -1,26 +1,26 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
   Alert,
   Platform,
-  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../types';
-import { CustomButton, CalorieEstimateCard } from '../components';
-import { Colors, Spacing, FontSize, BorderRadius } from '../utils/theme';
-import { useAuth } from '../store/authStore';
-import { detectCaloriesFromImage } from '../services/foodDetectionService';
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CalorieEstimateCard, CustomButton } from "../components";
+import { detectCaloriesFromImage } from "../services/foodDetectionService";
+import { useAuth } from "../store/authStore";
+import type { RootStackParamList } from "../types";
+import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Dashboard">;
 
 export function DashboardScreen(_props: Props) {
   const insets = useSafeAreaInsets();
@@ -36,8 +36,8 @@ export function DashboardScreen(_props: Props) {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== ImagePicker.PermissionStatus.GRANTED) {
       Alert.alert(
-        'Permission needed',
-        'Camera access is required to take a photo.',
+        "Permission needed",
+        "Camera access is required to take a photo.",
       );
       return;
     }
@@ -55,8 +55,8 @@ export function DashboardScreen(_props: Props) {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== ImagePicker.PermissionStatus.GRANTED) {
       Alert.alert(
-        'Permission needed',
-        'Photo library access is required to upload an image.',
+        "Permission needed",
+        "Photo library access is required to upload an image.",
       );
       return;
     }
@@ -77,7 +77,7 @@ export function DashboardScreen(_props: Props) {
   }, []);
 
   const { dailyCalorieGoal, setDailyCalorieGoal } = useAuth();
-  const [goalInput, setGoalInput] = useState('');
+  const [goalInput, setGoalInput] = useState("");
   const [goalError, setGoalError] = useState<string | undefined>();
 
   useEffect(() => {
@@ -112,15 +112,20 @@ export function DashboardScreen(_props: Props) {
     };
   }, [imageUri]);
 
-  const consumedCalories = foodHistory.reduce((sum, item) => sum + item.calories, 0);
+  const consumedCalories = foodHistory.reduce(
+    (sum, item) => sum + item.calories,
+    0,
+  );
   const remainingCalories =
-    dailyCalorieGoal != null ? Math.max(0, dailyCalorieGoal - consumedCalories) : null;
+    dailyCalorieGoal != null
+      ? Math.max(0, dailyCalorieGoal - consumedCalories)
+      : null;
 
   const saveDailyGoal = () => {
     setGoalError(undefined);
     const num = Number(goalInput);
     if (!Number.isFinite(num) || num <= 0) {
-      setGoalError('Enter a valid daily calorie goal');
+      setGoalError("Enter a valid daily calorie goal");
       return;
     }
     setDailyCalorieGoal(num);
@@ -131,15 +136,24 @@ export function DashboardScreen(_props: Props) {
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + Spacing.lg },
+        {
+          paddingTop: insets.top + Spacing.md,
+          paddingBottom: insets.bottom + Spacing.lg,
+        },
       ]}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.heading}>Dashboard</Text>
-      <Text style={styles.subheading}>Take a photo or choose from your library</Text>
+      <Text style={styles.subheading}>
+        Take a photo or choose from your library
+      </Text>
 
       <View style={styles.actions}>
-        <CustomButton title="Take photo" onPress={pickFromCamera} style={styles.actionBtn} />
+        <CustomButton
+          title="Take photo"
+          onPress={pickFromCamera}
+          style={styles.actionBtn}
+        />
         <CustomButton
           title="Upload image"
           onPress={pickFromLibrary}
@@ -175,9 +189,9 @@ export function DashboardScreen(_props: Props) {
           />
         ) : (
           <Text style={styles.placeholder}>
-            {Platform.OS === 'web'
-              ? 'No image yet — use the buttons above.'
-              : 'No image yet — take a photo or upload one.'}
+            {Platform.OS === "web"
+              ? "No image yet — use the buttons above."
+              : "No image yet — take a photo or upload one."}
           </Text>
         )}
       </View>
@@ -203,14 +217,16 @@ export function DashboardScreen(_props: Props) {
             keyboardType="numeric"
           />
 
-          {goalError ? <Text style={styles.goalErrorText}>{goalError}</Text> : null}
+          {goalError ? (
+            <Text style={styles.goalErrorText}>{goalError}</Text>
+          ) : null}
 
           <View style={{ marginTop: Spacing.sm }}>
             <CustomButton
               title="Save goal"
               onPress={saveDailyGoal}
               variant="primary"
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             />
           </View>
         </View>
@@ -268,7 +284,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     fontSize: FontSize.xl + 4,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
@@ -282,19 +298,19 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   actionBtn: {
-    width: '100%',
+    width: "100%",
   },
   previewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: Spacing.sm,
   },
   previewLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   deleteBtn: {
@@ -310,19 +326,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
   },
   previewImage: {
-    width: '100%',
+    width: "100%",
     minHeight: 280,
     aspectRatio: 1,
   },
   placeholder: {
     fontSize: FontSize.md,
     color: Colors.placeholder,
-    textAlign: 'center',
+    textAlign: "center",
     padding: Spacing.lg,
   },
   goalCard: {
@@ -335,19 +351,19 @@ const styles = StyleSheet.create({
   },
   goalTitleText: {
     fontSize: FontSize.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
   goalHint: {
     fontSize: FontSize.sm,
-    fontWeight: '500',
+    fontWeight: "500",
     color: Colors.textSecondary,
     marginBottom: Spacing.md,
     lineHeight: 20,
   },
   goalTextInput: {
-    width: '100%',
+    width: "100%",
     borderWidth: 1,
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
@@ -355,14 +371,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: Spacing.sm,
   },
   goalErrorText: {
     color: Colors.error,
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: Spacing.sm,
   },
   summaryCard: {
@@ -375,24 +391,24 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: FontSize.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.md,
   },
   summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: Spacing.sm,
   },
   summaryLabel: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   summaryValue: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
   historyCard: {
@@ -406,19 +422,19 @@ const styles = StyleSheet.create({
   },
   historyTitle: {
     fontSize: FontSize.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.md,
   },
   historyEmpty: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.textSecondary,
   },
   historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -429,18 +445,18 @@ const styles = StyleSheet.create({
   },
   historyFoodName: {
     fontSize: FontSize.sm,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
   },
   historyTime: {
     fontSize: FontSize.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.placeholder,
     marginTop: 2,
   },
   historyCalories: {
     fontSize: FontSize.sm,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.primary,
   },
 });

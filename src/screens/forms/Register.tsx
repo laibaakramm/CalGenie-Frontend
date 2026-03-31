@@ -20,10 +20,10 @@ import {
   MailIcon,
   UserIcon,
 } from "../../components";
-import type { RootStackParamList } from "../../types";
-import { Colors, FontSize, Spacing, BorderRadius } from "../../utils/theme";
-import { useAuth } from "../../store/authStore";
 import { register as registerApi } from "../../services/authService";
+import { useAuth } from "../../store/authStore";
+import type { RootStackParamList } from "../../types";
+import { BorderRadius, Colors, FontSize, Spacing } from "../../utils/theme";
 
 type WeightSuggestion = "Gain" | "Maintain" | "Lose";
 

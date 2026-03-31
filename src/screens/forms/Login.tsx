@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../types';
-import { CustomInput, CustomButton } from '../../components';
-import { Colors, Spacing, FontSize } from '../../utils/theme';
-import { useAuth } from '../../store/authStore';
-import { login as loginApi } from '../../services/authService';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import React, { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { CustomButton, CustomInput } from "../../components";
+import { login as loginApi } from "../../services/authService";
+import { useAuth } from "../../store/authStore";
+import type { RootStackParamList } from "../../types";
+import { Colors, FontSize, Spacing } from "../../utils/theme";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -22,13 +29,13 @@ export function LoginScreen({ navigation }: Props) {
   const validate = (): boolean => {
     let valid = true;
     if (!email.trim()) {
-      setEmailError('Email is required');
+      setEmailError("Email is required");
       valid = false;
     } else {
       setEmailError(undefined);
     }
     if (!password) {
-      setPasswordError('Password is required');
+      setPasswordError("Password is required");
       valid = false;
     } else {
       setPasswordError(undefined);
@@ -49,9 +56,9 @@ export function LoginScreen({ navigation }: Props) {
       });
 
       setSession(res.token, res.user);
-      navigation.replace('Dashboard');
+      navigation.replace("Dashboard");
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Login failed';
+      const message = e instanceof Error ? e.message : "Login failed";
       setErrorMessage(message);
     } finally {
       setLoading(false);
@@ -59,19 +66,21 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   const goToRegister = () => {
-    navigation.navigate('Register');
+    navigation.navigate("Register");
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.content}>
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.subheading}>Sign in to continue</Text>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
 
         <CustomInput
           label="Email"
@@ -113,14 +122,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   content: {
     paddingHorizontal: Spacing.lg,
   },
   heading: {
     fontSize: FontSize.xl + 4,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
@@ -133,9 +142,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: Spacing.lg,
   },
   footerText: {
@@ -144,7 +153,7 @@ const styles = StyleSheet.create({
   },
   link: {
     fontSize: FontSize.md,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.primary,
   },
   errorText: {
