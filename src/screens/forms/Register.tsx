@@ -148,7 +148,7 @@ export function RegisterScreen({ navigation }: Props) {
           weight: Number(weight),
           height: Number(height),
           age: Number(age),
-          gender: normalizeGenderForApi(gender),
+          Gender: normalizeGenderForApi(gender),
         });
 
         setSession(res.token, res.user);
