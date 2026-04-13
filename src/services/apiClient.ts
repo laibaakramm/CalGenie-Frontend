@@ -13,17 +13,20 @@ export class ApiError extends Error {
   }
 }
 
-function getApiBaseUrl() {
+/**
+ * Resolves `extra.API_BASE_URL` for the machine that actually runs the API
+ * (handles localhost → LAN IP / Android emulator host).
+ * This is the **server origin** only — may or may not already include `/api`.
+ */
+function resolveConfiguredServerBase(): string {
   const url = (Constants.expoConfig as any)?.extra?.API_BASE_URL;
   const configuredUrl =
     typeof url === 'string' && url.trim() !== '' ? url.trim() : 'http://localhost:5000';
 
-  // Handle common Expo networking pitfall:
-  // "localhost" inside mobile runtime points to the device/emulator itself, not the dev machine.
   try {
     const parsed = new URL(configuredUrl);
     if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
-      return configuredUrl;
+      return configuredUrl.replace(/\/+$/, '');
     }
 
     const hostUri =
@@ -35,22 +38,38 @@ function getApiBaseUrl() {
       const host = hostUri.split(':')[0];
       if (host) {
         parsed.hostname = host;
-        return parsed.toString().replace(/\/$/, '');
+        return parsed.toString().replace(/\/+$/, '');
       }
     }
 
     if (Platform.OS === 'android') {
       parsed.hostname = '10.0.2.2';
-      return parsed.toString().replace(/\/$/, '');
+      return parsed.toString().replace(/\/+$/, '');
     }
 
-    return configuredUrl;
+    return configuredUrl.replace(/\/+$/, '');
   } catch {
-    return configuredUrl;
+    return configuredUrl.replace(/\/+$/, '');
   }
 }
 
-const API_BASE_URL = getApiBaseUrl();
+/**
+ * Base URL for JSON + multipart routes that live under `/api/...` on the server.
+ * If you set `API_BASE_URL` to `http://host:5000/api`, we do **not** add another `/api`.
+ */
+export function getApiRootUrl(): string {
+  const base = resolveConfiguredServerBase();
+  if (base.toLowerCase().endsWith('/api')) {
+    return base;
+  }
+  return `${base}/api`;
+}
+
+/**
+ * @deprecated Use `getApiRootUrl()`. Kept as alias: this is the **API root** (`.../api`), not the bare server origin.
+ * Route paths passed to `apiRequest` should be like `/auth/login`, `/dashboard` (no extra `/api` prefix).
+ */
+export const API_BASE_URL = getApiRootUrl();
 
 type ApiRequestOptions = Omit<RequestInit, 'body' | 'method'> & {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -98,3 +117,46 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions): P
   return json as T;
 }
 
+/** JSON APIs that require `Authorization: Bearer <token>`. */
+export async function apiRequestAuth<T>(
+  path: string,
+  options: ApiRequestOptions,
+  token: string,
+): Promise<T> {
+  const trimmed = token?.trim();
+  if (!trimmed) {
+    throw new ApiError('Not signed in', 401, null);
+  }
+  return apiRequest<T>(path, {
+    ...options,
+    headers: {
+      ...(options.headers ?? {}),
+      Authorization: `Bearer ${trimmed}`,
+    },
+  });
+}
+
+/**
+ * Tries paths in order until one does not return 404. Re-throws the last error if all 404.
+ */
+export async function apiRequestAuthFirstPath<T>(
+  paths: readonly string[],
+  options: ApiRequestOptions,
+  token: string,
+): Promise<T> {
+  let lastErr: unknown;
+  for (const p of paths) {
+    try {
+      return await apiRequestAuth<T>(p, options, token);
+    } catch (e) {
+      lastErr = e;
+      if (e instanceof ApiError && e.status === 404) {
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new ApiError('Request failed with status 404', 404, null);
+}

@@ -20,6 +20,8 @@ import {
   MailIcon,
   UserIcon,
 } from "../../components";
+import { upsertDailyCalorieGoal } from "../../services/dashboardService";
+import { isAuthenticatedApiToken } from "../../store/dashboardOverviewStore";
 import { register as registerApi } from "../../services/authService";
 import { useAuth } from "../../store/authStore";
 import type { RootStackParamList } from "../../types";
@@ -38,7 +40,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const { setSession, setDailyCalorieGoal } = useAuth();
+  const { token, setSession, setDailyCalorieGoal } = useAuth();
 
   const [step, setStep] = useState<"profile" | "goal">("profile");
   const [apiError, setApiError] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export function RegisterScreen({ navigation }: Props) {
           weight: Number(weight),
           height: Number(height),
           age: Number(age),
-          Gender: normalizeGenderForApi(gender),
+          gender: normalizeGenderForApi(gender),
         });
 
         setSession(res.token, res.user);
@@ -173,8 +175,19 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    setDailyCalorieGoal(goalNum);
-    navigation.replace("Dashboard");
+    try {
+      if (isAuthenticatedApiToken(token)) {
+        await upsertDailyCalorieGoal(token!, goalNum);
+      }
+      setDailyCalorieGoal(goalNum);
+      navigation.replace("MainTabs");
+    } catch (e) {
+      setApiError(
+        e instanceof Error
+          ? e.message
+          : "Unable to save goal right now. Please try again.",
+      );
+    }
   };
 
   const goBack = () => {

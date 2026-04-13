@@ -56,7 +56,7 @@ export function LoginScreen({ navigation }: Props) {
       });
 
       setSession(res.token, res.user);
-      navigation.replace("Dashboard");
+      navigation.replace("MainTabs");
     } catch (e) {
       const message = e instanceof Error ? e.message : "Login failed";
       setErrorMessage(message);

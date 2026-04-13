@@ -12,6 +12,7 @@ interface AuthContextValue {
   setSession: (nextToken: string, nextUser: AuthUser) => void;
   clearSession: () => void;
   setDailyCalorieGoal: (goal: number) => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -36,6 +37,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDailyCalorieGoalState(goal);
   }, []);
 
+  const updateUser = useCallback((updates: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        ...updates,
+      };
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
@@ -45,8 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession,
       clearSession,
       setDailyCalorieGoal,
+      updateUser,
     }),
-    [token, user, dailyCalorieGoal, setSession, clearSession, setDailyCalorieGoal],
+    [token, user, dailyCalorieGoal, setSession, clearSession, setDailyCalorieGoal, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient";
+import { ApiError, apiRequest } from "./apiClient";
 
 export type Gender = "male" | "female" | string;
 
@@ -9,13 +9,19 @@ export interface RegisterRequest {
   weight: number;
   height: number;
   age: number;
-  Gender: Gender;
+  gender: Gender;
 }
 
 export interface AuthUser {
+  /** Numeric id from the backend; required for calibrate / analyze multipart APIs. */
+  id?: number;
   name: string;
   bmi: number;
   bmiCategory: string;
+  weight?: number;
+  height?: number;
+  age?: number;
+  gender?: Gender;
 }
 
 export interface AuthResponse {
@@ -30,7 +36,27 @@ function getBmiCategory(bmi: number): string {
   return "Obese";
 }
 
-function normalizeAuthResponse(raw: unknown): AuthResponse {
+function readOptionalNumber(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function readOptionalUserId(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined;
+}
+
+function fallbackNameFromInput(input?: Partial<RegisterRequest | LoginRequest>): string {
+  if (input && "name" in input && typeof input.name === "string" && input.name.trim()) {
+    return input.name.trim();
+  }
+  if (input && "email" in input && typeof input.email === "string" && input.email.includes("@")) {
+    return input.email.split("@")[0] || "User";
+  }
+  return "User";
+}
+
+function normalizeAuthResponse(raw: unknown, input?: Partial<RegisterRequest | LoginRequest>): AuthResponse {
   const data = (raw ?? {}) as any;
   const nested = data?.data ?? data?.result ?? {};
 
@@ -52,7 +78,16 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
 
   const userSource =
     data?.user ?? nested?.user ?? data?.profile ?? nested?.profile ?? {};
-  const name = userSource?.name ?? data?.name ?? nested?.name ?? "User";
+
+  const id =
+    readOptionalUserId(userSource?.id) ??
+    readOptionalUserId(userSource?.userId) ??
+    readOptionalUserId(data?.userId) ??
+    readOptionalUserId(nested?.userId) ??
+    readOptionalUserId(data?.id) ??
+    readOptionalUserId(nested?.id);
+
+  const name = userSource?.name ?? data?.name ?? nested?.name ?? fallbackNameFromInput(input);
 
   const bmiValue = userSource?.bmi ?? data?.bmi ?? nested?.bmi;
   const bmiNumber = Number(bmiValue);
@@ -67,6 +102,31 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
         ? getBmiCategory(bmi)
         : "Unknown";
 
+  const weight =
+    readOptionalNumber(userSource?.weight) ??
+    readOptionalNumber(data?.weight) ??
+    readOptionalNumber(nested?.weight) ??
+    readOptionalNumber(input?.weight);
+
+  const height =
+    readOptionalNumber(userSource?.height) ??
+    readOptionalNumber(data?.height) ??
+    readOptionalNumber(nested?.height) ??
+    readOptionalNumber(input?.height);
+
+  const age =
+    readOptionalNumber(userSource?.age) ??
+    readOptionalNumber(data?.age) ??
+    readOptionalNumber(nested?.age) ??
+    readOptionalNumber(input?.age);
+
+  const genderRaw =
+    userSource?.gender ?? data?.gender ?? nested?.gender ?? input?.gender ?? undefined;
+  const gender =
+    typeof genderRaw === "string" && genderRaw.trim() !== ""
+      ? genderRaw.toLowerCase()
+      : undefined;
+
   // Some backends return user/profile without a JWT on register.
   // Keep session flow working with a deterministic fallback token.
   const token =
@@ -77,9 +137,14 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
   return {
     token,
     user: {
+      ...(id != null ? { id } : {}),
       name: String(name),
       bmi,
       bmiCategory,
+      weight,
+      height,
+      age,
+      gender,
     },
   };
 }
@@ -87,11 +152,30 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
 export async function register(
   payload: RegisterRequest,
 ): Promise<AuthResponse> {
-  const res = await apiRequest<unknown>("/api/auth/register", {
-    method: "POST",
-    body: payload,
-  });
-  return normalizeAuthResponse(res);
+  try {
+    const res = await apiRequest<unknown>("/auth/register", {
+      method: "POST",
+      body: payload,
+    });
+    return normalizeAuthResponse(res, payload);
+  } catch (e) {
+    if (
+      e instanceof ApiError &&
+      (e.status === 400 || e.status === 422)
+    ) {
+      const minimalPayload = {
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+      };
+      const fallbackRes = await apiRequest<unknown>("/auth/register", {
+        method: "POST",
+        body: minimalPayload,
+      });
+      return normalizeAuthResponse(fallbackRes, payload);
+    }
+    throw e;
+  }
 }
 
 export interface LoginRequest {
@@ -100,9 +184,9 @@ export interface LoginRequest {
 }
 
 export async function login(payload: LoginRequest): Promise<AuthResponse> {
-  const res = await apiRequest<unknown>("/api/auth/login", {
+  const res = await apiRequest<unknown>("/auth/login", {
     method: "POST",
     body: payload,
   });
-  return normalizeAuthResponse(res);
+  return normalizeAuthResponse(res, payload);
 }

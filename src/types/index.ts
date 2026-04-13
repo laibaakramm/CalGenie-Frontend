@@ -6,7 +6,14 @@ export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
   Register: undefined;
-  Dashboard: undefined;
+  MainTabs: undefined;
+  Scanning: undefined;
+};
+
+export type AppTabParamList = {
+  DashboardTab: undefined;
+  FoodHistoryTab: undefined;
+  ProfileTab: undefined;
 };
 
 export type InputType = 'email' | 'name' | 'password' | 'text';

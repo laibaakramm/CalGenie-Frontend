@@ -1,399 +1,302 @@
 import { Ionicons } from "@expo/vector-icons";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
-import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
-  Platform,
+  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CalorieEstimateCard, CustomButton } from "../components";
-import { detectCaloriesFromImage } from "../services/foodDetectionService";
-import { useAuth } from "../store/authStore";
 import type { RootStackParamList } from "../types";
+import {
+  isAuthenticatedApiToken,
+  useDashboardOverview,
+} from "../store/dashboardOverviewStore";
+import { useAuth } from "../store/authStore";
+import { useMealLogs } from "../store/mealLogStore";
 import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Dashboard">;
-
-export function DashboardScreen(_props: Props) {
+export function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [detectedCalories, setDetectedCalories] = useState<number | null>(null);
-  const [detectedFoodName, setDetectedFoodName] = useState<string | null>(null);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { token, user, dailyCalorieGoal } = useAuth();
+  const { logs, todayTotalCalories } = useMealLogs();
+  const {
+    overview,
+    loading: dashboardLoading,
+    error: dashboardError,
+    refreshDashboard,
+  } = useDashboardOverview();
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [foodHistory, setFoodHistory] = useState<
-    Array<{ id: string; calories: number; foodName: string; createdAt: number }>
-  >([]);
-
-  const pickFromCamera = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert(
-        "Permission needed",
-        "Camera access is required to take a photo.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.9,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setImageUri(result.assets[0].uri);
-    }
-  }, []);
-
-  const pickFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert(
-        "Permission needed",
-        "Photo library access is required to upload an image.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.9,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setImageUri(result.assets[0].uri);
-    }
-  }, []);
-
-  const clearImage = useCallback(() => {
-    setImageUri(null);
-    setDetectedCalories(null);
-    setDetectedFoodName(null);
-  }, []);
-
-  const { dailyCalorieGoal, setDailyCalorieGoal } = useAuth();
-  const [goalInput, setGoalInput] = useState("");
-  const [goalError, setGoalError] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!imageUri) return;
-
-    let cancelled = false;
-    (async () => {
-      const res = await detectCaloriesFromImage(imageUri);
-      if (cancelled) return;
-
-      if (!res) {
-        setDetectedCalories(null);
-        setDetectedFoodName(null);
-        return;
-      }
-
-      setDetectedCalories(res.calories);
-      setDetectedFoodName(res.foodName);
-      setFoodHistory((prev) => [
-        {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          calories: res.calories,
-          foodName: res.foodName,
-          createdAt: Date.now(),
-        },
-        ...prev,
-      ]);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [imageUri]);
-
-  const consumedCalories = foodHistory.reduce(
-    (sum, item) => sum + item.calories,
-    0,
+  useFocusEffect(
+    useCallback(() => {
+      void refreshDashboard();
+    }, [refreshDashboard]),
   );
+
+  const displayGoal =
+    overview != null && overview.dailyGoal > 0
+      ? overview.dailyGoal
+      : dailyCalorieGoal ?? null;
+
+  const useServerSummary =
+    isAuthenticatedApiToken(token) && overview != null;
+
+  const consumedCalories = useServerSummary
+    ? overview!.totalConsumed
+    : todayTotalCalories;
+
   const remainingCalories =
-    dailyCalorieGoal != null
-      ? Math.max(0, dailyCalorieGoal - consumedCalories)
+    displayGoal != null
+      ? useServerSummary
+        ? overview!.remaining
+        : Math.max(0, displayGoal - todayTotalCalories)
       : null;
 
-  const saveDailyGoal = () => {
-    setGoalError(undefined);
-    const num = Number(goalInput);
-    if (!Number.isFinite(num) || num <= 0) {
-      setGoalError("Enter a valid daily calorie goal");
-      return;
+  const progressPercentage = useServerSummary
+    ? overview!.progressPercentage
+    : displayGoal != null && displayGoal > 0
+      ? Math.min(100, Math.round((consumedCalories / displayGoal) * 100))
+      : 0;
+  const overGoal = displayGoal != null && consumedCalories > displayGoal;
+  const ringColor = overGoal ? Colors.error : Colors.primary;
+  const recentThreeMeals = useMemo(() => logs.slice(0, 3), [logs]);
+
+  const onRefreshDashboard = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshDashboard();
+    } finally {
+      setRefreshing(false);
     }
-    setDailyCalorieGoal(num);
-  };
+  }, [refreshDashboard]);
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: insets.top + Spacing.md,
-          paddingBottom: insets.bottom + Spacing.lg,
-        },
-      ]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.heading}>Dashboard</Text>
-      <Text style={styles.subheading}>
-        Take a photo or choose from your library
-      </Text>
-
-      <View style={styles.actions}>
-        <CustomButton
-          title="Take photo"
-          onPress={pickFromCamera}
-          style={styles.actionBtn}
-        />
-        <CustomButton
-          title="Upload image"
-          onPress={pickFromLibrary}
-          variant="outline"
-          style={styles.actionBtn}
-        />
-      </View>
-
-      <View style={styles.previewHeader}>
-        <Text style={styles.previewLabel}>Preview</Text>
-        {imageUri ? (
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.heading}>
+            Hello {user?.name?.trim() ? user.name : "User"}
+          </Text>
           <TouchableOpacity
-            onPress={clearImage}
-            style={styles.deleteBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.scanIconBtn}
+            onPress={() => navigation.navigate("Scanning")}
             accessibilityRole="button"
-            accessibilityLabel="Remove image"
+            accessibilityLabel="Open scanning screen"
           >
-            <Ionicons name="trash-outline" size={22} color={Colors.error} />
+            <Ionicons name="camera-outline" size={22} color={Colors.text} />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.deleteBtnPlaceholder} />
-        )}
-      </View>
-      <View style={styles.previewWrap}>
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.previewImage}
-            contentFit="contain"
-            transition={200}
-            accessibilityLabel="Selected image preview"
-          />
-        ) : (
-          <Text style={styles.placeholder}>
-            {Platform.OS === "web"
-              ? "No image yet — use the buttons above."
-              : "No image yet — take a photo or upload one."}
-          </Text>
-        )}
-      </View>
-
-      <CalorieEstimateCard
-        calories={detectedCalories}
-        foodName={detectedFoodName}
-      />
-
-      {dailyCalorieGoal == null ? (
-        <View style={styles.goalCard}>
-          <Text style={styles.goalTitleText}>Set your daily calorie goal</Text>
-          <Text style={styles.goalHint}>
-            This is required to show consumed/remaining calories.
-          </Text>
-
-          <TextInput
-            style={styles.goalTextInput}
-            value={goalInput}
-            onChangeText={setGoalInput}
-            placeholder="e.g. 2000"
-            placeholderTextColor={Colors.placeholder}
-            keyboardType="numeric"
-          />
-
-          {goalError ? (
-            <Text style={styles.goalErrorText}>{goalError}</Text>
+          {isAuthenticatedApiToken(token) && dashboardLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
           ) : null}
-
-          <View style={{ marginTop: Spacing.sm }}>
-            <CustomButton
-              title="Save goal"
-              onPress={saveDailyGoal}
-              variant="primary"
-              style={{ width: "100%" }}
-            />
-          </View>
         </View>
-      ) : (
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Today summary</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Daily goal</Text>
-            <Text style={styles.summaryValue}>{dailyCalorieGoal} kcal</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Consumed</Text>
-            <Text style={styles.summaryValue}>{consumedCalories} kcal</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Remaining</Text>
-            <Text style={styles.summaryValue}>
-              {remainingCalories ?? 0} kcal
-            </Text>
-          </View>
-        </View>
-      )}
+      </View>
 
-      <View style={styles.historyCard}>
-        <Text style={styles.historyTitle}>Food history</Text>
-        {foodHistory.length === 0 ? (
-          <Text style={styles.historyEmpty}>No foods consumed yet.</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingBottom: insets.bottom + Spacing.lg,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefreshDashboard}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
+      >
+
+      <View style={styles.circleCard}>
+        <View style={[styles.calorieCircle, { borderColor: ringColor }]}>
+          <Text style={[styles.circleCalories, { color: ringColor }]}>
+            {Math.round(consumedCalories)}
+          </Text>
+          <Text style={styles.circleUnits}>kcal</Text>
+        </View>
+        <Text style={styles.goalText}>
+          Goal: {displayGoal != null ? Math.round(displayGoal) : 0} kcal
+        </Text>
+        <Text style={[styles.goalStatusText, { color: ringColor }]}>
+          {overGoal ? "Goal exceeded" : "Within goal"}
+        </Text>
+        <Text style={styles.progressCaption}>{progressPercentage}% of daily goal</Text>
+      </View>
+
+      <View style={styles.recentCard}>
+        <Text style={styles.recentTitle}>Recent meals</Text>
+        {recentThreeMeals.length === 0 ? (
+          <Text style={styles.emptyRecent}>No meals logged yet.</Text>
         ) : (
-          foodHistory.map((item) => (
-            <View key={item.id} style={styles.historyItem}>
-              <View style={styles.historyItemLeft}>
-                <Text style={styles.historyFoodName} numberOfLines={1}>
-                  {item.foodName}
-                </Text>
-                <Text style={styles.historyTime}>
-                  {new Date(item.createdAt).toLocaleTimeString()}
-                </Text>
-              </View>
-              <Text style={styles.historyCalories}>{item.calories} kcal</Text>
+          recentThreeMeals.map((item) => (
+            <View key={item.id} style={styles.recentRow}>
+              <Text style={styles.recentMealName} numberOfLines={1}>
+                {item.foodName}
+              </Text>
+              <Text style={styles.recentMealCalories}>
+                {Math.round(item.calories)} kcal
+              </Text>
             </View>
           ))
         )}
       </View>
-    </ScrollView>
+
+      {isAuthenticatedApiToken(token) && dashboardError ? (
+        <View style={styles.dashboardErrorBanner}>
+          <Text style={styles.dashboardErrorText}>{dashboardError}</Text>
+          <TouchableOpacity
+            onPress={onRefreshDashboard}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading dashboard"
+          >
+            <Text style={styles.dashboardErrorRetry}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Consumed</Text>
+        <Text style={styles.summaryValue}>{Math.round(consumedCalories)} kcal</Text>
+      </View>
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Remaining</Text>
+        <Text style={styles.summaryValue}>
+          {remainingCalories != null ? Math.round(remainingCalories) : 0} kcal
+        </Text>
+      </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
+  container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
+  header: {
     paddingHorizontal: Spacing.lg,
   },
-  heading: {
-    fontSize: FontSize.xl + 4,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+  scroll: {
+    flex: 1,
   },
-  subheading: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xl,
+  content: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
   },
-  actions: {
-    gap: Spacing.sm,
-    marginBottom: Spacing.xl,
-  },
-  actionBtn: {
-    width: "100%",
-  },
-  previewHeader: {
+  headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
-  previewLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  heading: {
+    fontSize: FontSize.xl + 2,
+    fontWeight: "700",
+    color: Colors.text,
+    flex: 1,
   },
-  deleteBtn: {
-    padding: Spacing.xs,
-  },
-  deleteBtnPlaceholder: {
-    width: 22 + Spacing.xs * 2,
-    height: 22 + Spacing.xs * 2,
-  },
-  previewWrap: {
-    minHeight: 280,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
+  scanIconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    overflow: "hidden",
-    justifyContent: "center",
     alignItems: "center",
-  },
-  previewImage: {
-    width: "100%",
-    minHeight: 280,
-    aspectRatio: 1,
-  },
-  placeholder: {
-    fontSize: FontSize.md,
-    color: Colors.placeholder,
-    textAlign: "center",
-    padding: Spacing.lg,
-  },
-  goalCard: {
-    marginTop: Spacing.lg,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    justifyContent: "center",
     backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    marginRight: Spacing.sm,
   },
-  goalTitleText: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.sm,
+  circleCard: {
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
   },
-  goalHint: {
+  calorieCircle: {
+    width: 150,
+    height: 150,
+    borderRadius: BorderRadius.full,
+    borderWidth: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.white,
+  },
+  circleCalories: {
+    fontSize: FontSize.xl + 8,
+    fontWeight: "800",
+  },
+  circleUnits: {
     fontSize: FontSize.sm,
-    fontWeight: "500",
     color: Colors.textSecondary,
-    marginBottom: Spacing.md,
-    lineHeight: 20,
+    fontWeight: "700",
   },
-  goalTextInput: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: Spacing.sm,
-  },
-  goalErrorText: {
-    color: Colors.error,
+  goalText: {
+    marginTop: Spacing.md,
     fontSize: FontSize.sm,
     fontWeight: "600",
-    marginBottom: Spacing.sm,
+    color: Colors.textSecondary,
   },
-  summaryCard: {
-    marginTop: Spacing.lg,
+  goalStatusText: {
+    marginTop: Spacing.xs,
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+  },
+  recentCard: {
+    marginBottom: Spacing.lg,
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  summaryTitle: {
+  recentTitle: {
     fontSize: FontSize.md,
     fontWeight: "700",
     color: Colors.text,
     marginBottom: Spacing.md,
+  },
+  emptyRecent: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+  progressCaption: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
+    textAlign: "center",
+  },
+  recentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  recentMealName: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+  recentMealCalories: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    color: Colors.primary,
   },
   summaryRow: {
     flexDirection: "row",
@@ -411,50 +314,26 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.text,
   },
-  historyCard: {
-    marginTop: Spacing.lg,
-    padding: Spacing.lg,
+  dashboardErrorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.md,
+    padding: Spacing.md,
     borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
+    backgroundColor: `${Colors.error}12`,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: `${Colors.error}44`,
     marginBottom: Spacing.lg,
   },
-  historyTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.md,
-  },
-  historyEmpty: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-  },
-  historyItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  historyItemLeft: {
+  dashboardErrorText: {
     flex: 1,
-    marginRight: Spacing.md,
-  },
-  historyFoodName: {
-    fontSize: FontSize.sm,
-    fontWeight: "700",
-    color: Colors.text,
-  },
-  historyTime: {
     fontSize: FontSize.sm,
     fontWeight: "600",
-    color: Colors.placeholder,
-    marginTop: 2,
+    color: Colors.error,
+    lineHeight: 20,
   },
-  historyCalories: {
+  dashboardErrorRetry: {
     fontSize: FontSize.sm,
     fontWeight: "800",
     color: Colors.primary,
