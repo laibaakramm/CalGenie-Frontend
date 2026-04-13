@@ -1,5 +1,11 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import type { AuthUser } from '../services/authService';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
+import type { AuthUser } from "../services/authService";
 
 export type DailyCalorieGoal = number | null;
 
@@ -20,7 +26,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [dailyCalorieGoal, setDailyCalorieGoalState] = useState<DailyCalorieGoal>(null);
+  const [dailyCalorieGoal, setDailyCalorieGoalState] =
+    useState<DailyCalorieGoal>(null);
 
   const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {
     setToken(nextToken);
@@ -58,7 +65,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setDailyCalorieGoal,
       updateUser,
     }),
+<<<<<<< HEAD
     [token, user, dailyCalorieGoal, setSession, clearSession, setDailyCalorieGoal, updateUser],
+=======
+    [
+      token,
+      user,
+      dailyCalorieGoal,
+      setSession,
+      clearSession,
+      setDailyCalorieGoal,
+    ],
+>>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -66,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }
-

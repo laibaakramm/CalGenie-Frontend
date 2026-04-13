@@ -13,8 +13,6 @@ export interface RegisterRequest {
 }
 
 export interface AuthUser {
-  /** Numeric id from the backend; required for calibrate / analyze multipart APIs. */
-  id?: number;
   name: string;
   bmi: number;
   bmiCategory: string;
@@ -46,17 +44,32 @@ function readOptionalUserId(value: unknown): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined;
 }
 
-function fallbackNameFromInput(input?: Partial<RegisterRequest | LoginRequest>): string {
-  if (input && "name" in input && typeof input.name === "string" && input.name.trim()) {
+function fallbackNameFromInput(
+  input?: Partial<RegisterRequest | LoginRequest>,
+): string {
+  if (
+    input &&
+    "name" in input &&
+    typeof input.name === "string" &&
+    input.name.trim()
+  ) {
     return input.name.trim();
   }
-  if (input && "email" in input && typeof input.email === "string" && input.email.includes("@")) {
+  if (
+    input &&
+    "email" in input &&
+    typeof input.email === "string" &&
+    input.email.includes("@")
+  ) {
     return input.email.split("@")[0] || "User";
   }
   return "User";
 }
 
-function normalizeAuthResponse(raw: unknown, input?: Partial<RegisterRequest | LoginRequest>): AuthResponse {
+function normalizeAuthResponse(
+  raw: unknown,
+  input?: Partial<RegisterRequest | LoginRequest>,
+): AuthResponse {
   const data = (raw ?? {}) as any;
   const nested = data?.data ?? data?.result ?? {};
 
@@ -78,16 +91,7 @@ function normalizeAuthResponse(raw: unknown, input?: Partial<RegisterRequest | L
 
   const userSource =
     data?.user ?? nested?.user ?? data?.profile ?? nested?.profile ?? {};
-
-  const id =
-    readOptionalUserId(userSource?.id) ??
-    readOptionalUserId(userSource?.userId) ??
-    readOptionalUserId(data?.userId) ??
-    readOptionalUserId(nested?.userId) ??
-    readOptionalUserId(data?.id) ??
-    readOptionalUserId(nested?.id);
-
-  const name = userSource?.name ?? data?.name ?? nested?.name ?? fallbackNameFromInput(input);
+  const name = userSource?.name ?? data?.name ?? nested?.name ?? "User";
 
   const bmiValue = userSource?.bmi ?? data?.bmi ?? nested?.bmi;
   const bmiNumber = Number(bmiValue);
@@ -121,7 +125,11 @@ function normalizeAuthResponse(raw: unknown, input?: Partial<RegisterRequest | L
     readOptionalNumber(input?.age);
 
   const genderRaw =
-    userSource?.gender ?? data?.gender ?? nested?.gender ?? input?.gender ?? undefined;
+    userSource?.gender ??
+    data?.gender ??
+    nested?.gender ??
+    input?.gender ??
+    undefined;
   const gender =
     typeof genderRaw === "string" && genderRaw.trim() !== ""
       ? genderRaw.toLowerCase()
@@ -137,7 +145,6 @@ function normalizeAuthResponse(raw: unknown, input?: Partial<RegisterRequest | L
   return {
     token,
     user: {
-      ...(id != null ? { id } : {}),
       name: String(name),
       bmi,
       bmiCategory,
@@ -159,10 +166,7 @@ export async function register(
     });
     return normalizeAuthResponse(res, payload);
   } catch (e) {
-    if (
-      e instanceof ApiError &&
-      (e.status === 400 || e.status === 422)
-    ) {
+    if (e instanceof ApiError && (e.status === 400 || e.status === 422)) {
       const minimalPayload = {
         name: payload.name,
         email: payload.email,

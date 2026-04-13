@@ -12,6 +12,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+<<<<<<< HEAD
+=======
+import { CalorieEstimateCard, CustomButton } from "../components";
+import {
+  detectCaloriesFromImage,
+  scanIndianFood,
+} from "../services/foodDetectionService";
+import { useAuth } from "../store/authStore";
+>>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
 import type { RootStackParamList } from "../types";
 import {
   isAuthenticatedApiToken,
@@ -35,10 +44,119 @@ export function DashboardScreen() {
   } = useDashboardOverview();
   const [refreshing, setRefreshing] = useState(false);
 
+<<<<<<< HEAD
   useFocusEffect(
     useCallback(() => {
       void refreshDashboard();
     }, [refreshDashboard]),
+=======
+  const [foodHistory, setFoodHistory] = useState<
+    Array<{ id: string; calories: number; foodName: string; createdAt: number }>
+  >([]);
+
+  const pickFromCamera = useCallback(async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== ImagePicker.PermissionStatus.GRANTED) {
+      Alert.alert(
+        "Permission needed",
+        "Camera access is required to take a photo.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setImageUri(result.assets[0].uri);
+    }
+  }, []);
+
+  const pickFromLibrary = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== ImagePicker.PermissionStatus.GRANTED) {
+      Alert.alert(
+        "Permission needed",
+        "Photo library access is required to upload an image.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setImageUri(result.assets[0].uri);
+    }
+  }, []);
+
+  const clearImage = useCallback(() => {
+    setImageUri(null);
+    setDetectedCalories(null);
+    setDetectedFoodName(null);
+  }, []);
+
+  const { dailyCalorieGoal, setDailyCalorieGoal, token, user } = useAuth();
+
+  const handleIndianScan = async () => {
+    console.log("token:", token);
+    console.log("user:", user);
+    console.log("imageUri:", imageUri);
+    if (!imageUri) {
+      Alert.alert("No image", "Please take a photo or upload one first.");
+      return;
+    }
+    try {
+      const result = await scanIndianFood(imageUri, 1, token!);
+      console.log("RESULT:", JSON.stringify(result));
+      setDetectedCalories(result.totalCalories);
+      setDetectedFoodName(result.detections[0]?.foodName ?? "Unknown");
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    }
+  };
+
+  const [goalInput, setGoalInput] = useState("");
+  const [goalError, setGoalError] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!imageUri) return;
+
+    let cancelled = false;
+    (async () => {
+      const res = await detectCaloriesFromImage(imageUri);
+      if (cancelled) return;
+
+      if (!res) {
+        setDetectedCalories(null);
+        setDetectedFoodName(null);
+        return;
+      }
+
+      setDetectedCalories(res.calories);
+      setDetectedFoodName(res.foodName);
+      setFoodHistory((prev) => [
+        {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          calories: res.calories,
+          foodName: res.foodName,
+          createdAt: Date.now(),
+        },
+        ...prev,
+      ]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUri]);
+
+  const consumedCalories = foodHistory.reduce(
+    (sum, item) => sum + item.calories,
+    0,
+>>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
   );
 
   const displayGoal =
@@ -79,12 +197,55 @@ export function DashboardScreen() {
   }, [refreshDashboard]);
 
   return (
+<<<<<<< HEAD
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <View style={styles.headerTopRow}>
           <Text style={styles.heading}>
             Hello {user?.name?.trim() ? user.name : "User"}
           </Text>
+=======
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        {
+          paddingTop: insets.top + Spacing.md,
+          paddingBottom: insets.bottom + Spacing.lg,
+        },
+      ]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>Dashboard</Text>
+      <Text style={styles.subheading}>
+        Take a photo or choose from your library
+      </Text>
+
+      <View style={styles.actions}>
+        <CustomButton
+          title="Take photo"
+          onPress={pickFromCamera}
+          style={styles.actionBtn}
+        />
+        <CustomButton
+          title="Upload image"
+          onPress={pickFromLibrary}
+          variant="outline"
+          style={styles.actionBtn}
+        />
+
+        <CustomButton
+          title="Scan Indian Food"
+          onPress={handleIndianScan}
+          variant="primary"
+          style={styles.actionBtn}
+        />
+      </View>
+
+      <View style={styles.previewHeader}>
+        <Text style={styles.previewLabel}>Preview</Text>
+        {imageUri ? (
+>>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
           <TouchableOpacity
             style={styles.scanIconBtn}
             onPress={() => navigation.navigate("Scanning")}
