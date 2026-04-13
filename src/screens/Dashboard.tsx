@@ -15,7 +15,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CalorieEstimateCard, CustomButton } from "../components";
-import { detectCaloriesFromImage } from "../services/foodDetectionService";
+import {
+  detectCaloriesFromImage,
+  scanIndianFood,
+} from "../services/foodDetectionService";
 import { useAuth } from "../store/authStore";
 import type { RootStackParamList } from "../types";
 import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
@@ -76,7 +79,26 @@ export function DashboardScreen(_props: Props) {
     setDetectedFoodName(null);
   }, []);
 
-  const { dailyCalorieGoal, setDailyCalorieGoal } = useAuth();
+  const { dailyCalorieGoal, setDailyCalorieGoal, token, user } = useAuth();
+
+  const handleIndianScan = async () => {
+    console.log("token:", token);
+    console.log("user:", user);
+    console.log("imageUri:", imageUri);
+    if (!imageUri) {
+      Alert.alert("No image", "Please take a photo or upload one first.");
+      return;
+    }
+    try {
+      const result = await scanIndianFood(imageUri, 1, token!);
+      console.log("RESULT:", JSON.stringify(result));
+      setDetectedCalories(result.totalCalories);
+      setDetectedFoodName(result.detections[0]?.foodName ?? "Unknown");
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    }
+  };
+
   const [goalInput, setGoalInput] = useState("");
   const [goalError, setGoalError] = useState<string | undefined>();
 
@@ -158,6 +180,13 @@ export function DashboardScreen(_props: Props) {
           title="Upload image"
           onPress={pickFromLibrary}
           variant="outline"
+          style={styles.actionBtn}
+        />
+
+        <CustomButton
+          title="Scan Indian Food"
+          onPress={handleIndianScan}
+          variant="primary"
           style={styles.actionBtn}
         />
       </View>

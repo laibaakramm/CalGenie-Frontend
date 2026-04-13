@@ -13,6 +13,7 @@ export interface RegisterRequest {
 }
 
 export interface AuthUser {
+  id: number;
   name: string;
   bmi: number;
   bmiCategory: string;
@@ -53,6 +54,7 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
   const userSource =
     data?.user ?? nested?.user ?? data?.profile ?? nested?.profile ?? {};
   const name = userSource?.name ?? data?.name ?? nested?.name ?? "User";
+  const id = userSource?.id ?? data?.id ?? nested?.id ?? 0;
 
   const bmiValue = userSource?.bmi ?? data?.bmi ?? nested?.bmi;
   const bmiNumber = Number(bmiValue);
@@ -77,6 +79,7 @@ function normalizeAuthResponse(raw: unknown): AuthResponse {
   return {
     token,
     user: {
+      id: Number(id),
       name: String(name),
       bmi,
       bmiCategory,
