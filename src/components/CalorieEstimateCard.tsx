@@ -35,8 +35,7 @@ export function CalorieEstimateCard({
         {foodDisplay}
       </Text>
       <Text style={styles.hint}>
-        Calorie detection is not connected yet — this will update automatically when the
-        service is available.
+        Estimates come from the latest scan result and may vary by image quality.
       </Text>
     </View>
   );

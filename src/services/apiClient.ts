@@ -53,6 +53,47 @@ function resolveConfiguredServerBase(): string {
   }
 }
 
+function readExpoHost(): string | null {
+  const hostUri =
+    (Constants.expoConfig as any)?.hostUri ??
+    (Constants as any)?.expoGoConfig?.debuggerHost ??
+    (Constants as any)?.manifest2?.extra?.expoGo?.debuggerHost;
+  if (typeof hostUri !== 'string' || hostUri.length === 0) return null;
+  const host = hostUri.split(':')[0]?.trim();
+  return host || null;
+}
+
+function isPrivateOrLoopbackHostname(hostname: string): boolean {
+  const h = hostname.trim().toLowerCase();
+  if (!h) return false;
+  if (h === 'localhost' || h === '127.0.0.1') return true;
+  if (h.startsWith('10.')) return true;
+  if (h.startsWith('192.168.')) return true;
+  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true;
+  return false;
+}
+
+function getApiRootCandidates(): string[] {
+  const base = getApiRootUrl();
+  const candidates = [base];
+
+  try {
+    const parsed = new URL(base);
+    const expoHost = readExpoHost();
+    if (expoHost && isPrivateOrLoopbackHostname(parsed.hostname) && expoHost !== parsed.hostname) {
+      parsed.hostname = expoHost;
+      const fallback = parsed.toString().replace(/\/+$/, '');
+      if (!candidates.includes(fallback)) {
+        candidates.push(fallback);
+      }
+    }
+  } catch {
+    // Keep only base candidate when URL parsing fails.
+  }
+
+  return candidates;
+}
+
 /**
  * Base URL for JSON + multipart routes that live under `/api/...` on the server.
  * If you set `API_BASE_URL` to `http://host:5000/api`, we do **not** add another `/api`.
@@ -78,21 +119,35 @@ type ApiRequestOptions = Omit<RequestInit, 'body' | 'method'> & {
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions): Promise<T> {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const url = `${API_BASE_URL}${normalizedPath}`;
+  const roots = getApiRootCandidates();
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers ?? {}),
-      },
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
-  } catch {
+  let res: Response | null = null;
+  let lastFetchErr: unknown = null;
+  for (const root of roots) {
+    const url = `${root}${normalizedPath}`;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers ?? {}),
+        },
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      });
+      break;
+    } catch (e) {
+      lastFetchErr = e;
+    }
+  }
+
+  if (!res) {
+    const attempted = roots.join(', ');
+    const originalReason =
+      lastFetchErr instanceof Error && lastFetchErr.message
+        ? ` Original error: ${lastFetchErr.message}`
+        : '';
     throw new Error(
-      `Unable to reach API at ${API_BASE_URL}. If you are using a physical device, set API_BASE_URL to your computer LAN IP (for example http://192.168.1.10:5000).`,
+      `Unable to reach API. Attempted: ${attempted}. Ensure backend is running and reachable on your current LAN IP.${originalReason}`,
     );
   }
 
@@ -115,6 +170,30 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions): P
   }
 
   return json as T;
+}
+
+/**
+ * Tries paths in order until one does not return 404. Re-throws the last error if all 404.
+ */
+export async function apiRequestFirstPath<T>(
+  paths: readonly string[],
+  options: ApiRequestOptions,
+): Promise<T> {
+  let lastErr: unknown;
+  for (const p of paths) {
+    try {
+      return await apiRequest<T>(p, options);
+    } catch (e) {
+      lastErr = e;
+      if (e instanceof ApiError && e.status === 404) {
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new ApiError("Request failed with status 404", 404, null);
 }
 
 /** JSON APIs that require `Authorization: Bearer <token>`. */

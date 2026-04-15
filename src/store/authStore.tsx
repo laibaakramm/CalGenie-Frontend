@@ -65,9 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setDailyCalorieGoal,
       updateUser,
     }),
-<<<<<<< HEAD
-    [token, user, dailyCalorieGoal, setSession, clearSession, setDailyCalorieGoal, updateUser],
-=======
     [
       token,
       user,
@@ -75,8 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession,
       clearSession,
       setDailyCalorieGoal,
+      updateUser,
     ],
->>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

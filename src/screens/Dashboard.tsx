@@ -12,22 +12,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-<<<<<<< HEAD
-=======
-import { CalorieEstimateCard, CustomButton } from "../components";
-import {
-  detectCaloriesFromImage,
-  scanIndianFood,
-} from "../services/foodDetectionService";
-import { useAuth } from "../store/authStore";
->>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
-import type { RootStackParamList } from "../types";
 import {
   isAuthenticatedApiToken,
   useDashboardOverview,
 } from "../store/dashboardOverviewStore";
 import { useAuth } from "../store/authStore";
 import { useMealLogs } from "../store/mealLogStore";
+import type { RootStackParamList } from "../types";
 import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
 
 export function DashboardScreen() {
@@ -44,119 +35,10 @@ export function DashboardScreen() {
   } = useDashboardOverview();
   const [refreshing, setRefreshing] = useState(false);
 
-<<<<<<< HEAD
   useFocusEffect(
     useCallback(() => {
       void refreshDashboard();
     }, [refreshDashboard]),
-=======
-  const [foodHistory, setFoodHistory] = useState<
-    Array<{ id: string; calories: number; foodName: string; createdAt: number }>
-  >([]);
-
-  const pickFromCamera = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert(
-        "Permission needed",
-        "Camera access is required to take a photo.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.9,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setImageUri(result.assets[0].uri);
-    }
-  }, []);
-
-  const pickFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert(
-        "Permission needed",
-        "Photo library access is required to upload an image.",
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.9,
-    });
-    if (!result.canceled && result.assets[0]?.uri) {
-      setImageUri(result.assets[0].uri);
-    }
-  }, []);
-
-  const clearImage = useCallback(() => {
-    setImageUri(null);
-    setDetectedCalories(null);
-    setDetectedFoodName(null);
-  }, []);
-
-  const { dailyCalorieGoal, setDailyCalorieGoal, token, user } = useAuth();
-
-  const handleIndianScan = async () => {
-    console.log("token:", token);
-    console.log("user:", user);
-    console.log("imageUri:", imageUri);
-    if (!imageUri) {
-      Alert.alert("No image", "Please take a photo or upload one first.");
-      return;
-    }
-    try {
-      const result = await scanIndianFood(imageUri, 1, token!);
-      console.log("RESULT:", JSON.stringify(result));
-      setDetectedCalories(result.totalCalories);
-      setDetectedFoodName(result.detections[0]?.foodName ?? "Unknown");
-    } catch (err: any) {
-      Alert.alert("Error", err.message);
-    }
-  };
-
-  const [goalInput, setGoalInput] = useState("");
-  const [goalError, setGoalError] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (!imageUri) return;
-
-    let cancelled = false;
-    (async () => {
-      const res = await detectCaloriesFromImage(imageUri);
-      if (cancelled) return;
-
-      if (!res) {
-        setDetectedCalories(null);
-        setDetectedFoodName(null);
-        return;
-      }
-
-      setDetectedCalories(res.calories);
-      setDetectedFoodName(res.foodName);
-      setFoodHistory((prev) => [
-        {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          calories: res.calories,
-          foodName: res.foodName,
-          createdAt: Date.now(),
-        },
-        ...prev,
-      ]);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [imageUri]);
-
-  const consumedCalories = foodHistory.reduce(
-    (sum, item) => sum + item.calories,
-    0,
->>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
   );
 
   const displayGoal =
@@ -168,21 +50,22 @@ export function DashboardScreen() {
     isAuthenticatedApiToken(token) && overview != null;
 
   const consumedCalories = useServerSummary
-    ? overview!.totalConsumed
+    ? overview.totalConsumed
     : todayTotalCalories;
 
   const remainingCalories =
     displayGoal != null
       ? useServerSummary
-        ? overview!.remaining
+        ? overview.remaining
         : Math.max(0, displayGoal - todayTotalCalories)
       : null;
 
   const progressPercentage = useServerSummary
-    ? overview!.progressPercentage
+    ? overview.progressPercentage
     : displayGoal != null && displayGoal > 0
       ? Math.min(100, Math.round((consumedCalories / displayGoal) * 100))
       : 0;
+
   const overGoal = displayGoal != null && consumedCalories > displayGoal;
   const ringColor = overGoal ? Colors.error : Colors.primary;
   const recentThreeMeals = useMemo(() => logs.slice(0, 3), [logs]);
@@ -197,55 +80,12 @@ export function DashboardScreen() {
   }, [refreshDashboard]);
 
   return (
-<<<<<<< HEAD
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <View style={styles.headerTopRow}>
           <Text style={styles.heading}>
             Hello {user?.name?.trim() ? user.name : "User"}
           </Text>
-=======
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: insets.top + Spacing.md,
-          paddingBottom: insets.bottom + Spacing.lg,
-        },
-      ]}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.heading}>Dashboard</Text>
-      <Text style={styles.subheading}>
-        Take a photo or choose from your library
-      </Text>
-
-      <View style={styles.actions}>
-        <CustomButton
-          title="Take photo"
-          onPress={pickFromCamera}
-          style={styles.actionBtn}
-        />
-        <CustomButton
-          title="Upload image"
-          onPress={pickFromLibrary}
-          variant="outline"
-          style={styles.actionBtn}
-        />
-
-        <CustomButton
-          title="Scan Indian Food"
-          onPress={handleIndianScan}
-          variant="primary"
-          style={styles.actionBtn}
-        />
-      </View>
-
-      <View style={styles.previewHeader}>
-        <Text style={styles.previewLabel}>Preview</Text>
-        {imageUri ? (
->>>>>>> 0b918c53fb16f4bf2777ca949e744a801a66eefd
           <TouchableOpacity
             style={styles.scanIconBtn}
             onPress={() => navigation.navigate("Scanning")}
@@ -278,64 +118,65 @@ export function DashboardScreen() {
           />
         }
       >
-
-      <View style={styles.circleCard}>
-        <View style={[styles.calorieCircle, { borderColor: ringColor }]}>
-          <Text style={[styles.circleCalories, { color: ringColor }]}>
-            {Math.round(consumedCalories)}
+        <View style={styles.circleCard}>
+          <View style={[styles.calorieCircle, { borderColor: ringColor }]}>
+            <Text style={[styles.circleCalories, { color: ringColor }]}>
+              {Math.round(consumedCalories)}
+            </Text>
+            <Text style={styles.circleUnits}>kcal</Text>
+          </View>
+          <Text style={styles.goalText}>
+            Goal: {displayGoal != null ? Math.round(displayGoal) : 0} kcal
           </Text>
-          <Text style={styles.circleUnits}>kcal</Text>
+          <Text style={[styles.goalStatusText, { color: ringColor }]}>
+            {overGoal ? "Goal exceeded" : "Within goal"}
+          </Text>
+          <Text style={styles.progressCaption}>
+            {progressPercentage}% of daily goal
+          </Text>
         </View>
-        <Text style={styles.goalText}>
-          Goal: {displayGoal != null ? Math.round(displayGoal) : 0} kcal
-        </Text>
-        <Text style={[styles.goalStatusText, { color: ringColor }]}>
-          {overGoal ? "Goal exceeded" : "Within goal"}
-        </Text>
-        <Text style={styles.progressCaption}>{progressPercentage}% of daily goal</Text>
-      </View>
 
-      <View style={styles.recentCard}>
-        <Text style={styles.recentTitle}>Recent meals</Text>
-        {recentThreeMeals.length === 0 ? (
-          <Text style={styles.emptyRecent}>No meals logged yet.</Text>
-        ) : (
-          recentThreeMeals.map((item) => (
-            <View key={item.id} style={styles.recentRow}>
-              <Text style={styles.recentMealName} numberOfLines={1}>
-                {item.foodName}
-              </Text>
-              <Text style={styles.recentMealCalories}>
-                {Math.round(item.calories)} kcal
-              </Text>
-            </View>
-          ))
-        )}
-      </View>
-
-      {isAuthenticatedApiToken(token) && dashboardError ? (
-        <View style={styles.dashboardErrorBanner}>
-          <Text style={styles.dashboardErrorText}>{dashboardError}</Text>
-          <TouchableOpacity
-            onPress={onRefreshDashboard}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading dashboard"
-          >
-            <Text style={styles.dashboardErrorRetry}>Retry</Text>
-          </TouchableOpacity>
+        <View style={styles.recentCard}>
+          <Text style={styles.recentTitle}>Recent meals</Text>
+          {recentThreeMeals.length === 0 ? (
+            <Text style={styles.emptyRecent}>No meals logged yet.</Text>
+          ) : (
+            recentThreeMeals.map((item) => (
+              <View key={item.id} style={styles.recentRow}>
+                <Text style={styles.recentMealName} numberOfLines={1}>
+                  {item.foodName}
+                </Text>
+                <Text style={styles.recentMealCalories}>
+                  {Math.round(item.calories)} kcal
+                </Text>
+              </View>
+            ))
+          )}
         </View>
-      ) : null}
 
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Consumed</Text>
-        <Text style={styles.summaryValue}>{Math.round(consumedCalories)} kcal</Text>
-      </View>
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Remaining</Text>
-        <Text style={styles.summaryValue}>
-          {remainingCalories != null ? Math.round(remainingCalories) : 0} kcal
-        </Text>
-      </View>
+        {isAuthenticatedApiToken(token) && dashboardError ? (
+          <View style={styles.dashboardErrorBanner}>
+            <Text style={styles.dashboardErrorText}>{dashboardError}</Text>
+            <TouchableOpacity
+              onPress={onRefreshDashboard}
+              accessibilityRole="button"
+              accessibilityLabel="Retry loading dashboard"
+            >
+              <Text style={styles.dashboardErrorRetry}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Consumed</Text>
+          <Text style={styles.summaryValue}>{Math.round(consumedCalories)} kcal</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Remaining</Text>
+          <Text style={styles.summaryValue}>
+            {remainingCalories != null ? Math.round(remainingCalories) : 0} kcal
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -413,6 +254,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: "700",
   },
+  progressCaption: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    marginTop: Spacing.sm,
+    textAlign: "center",
+  },
   recentCard: {
     marginBottom: Spacing.lg,
     padding: Spacing.lg,
@@ -431,13 +279,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: "600",
     color: Colors.textSecondary,
-  },
-  progressCaption: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    marginTop: Spacing.sm,
-    textAlign: "center",
   },
   recentRow: {
     flexDirection: "row",

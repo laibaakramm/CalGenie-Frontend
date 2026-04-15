@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from "./apiClient";
+import { ApiError, apiRequestFirstPath } from "./apiClient";
 
 export type Gender = "male" | "female" | string;
 
@@ -13,6 +13,7 @@ export interface RegisterRequest {
 }
 
 export interface AuthUser {
+  id?: number;
   name: string;
   bmi: number;
   bmiCategory: string;
@@ -26,6 +27,9 @@ export interface AuthResponse {
   token: string;
   user: AuthUser;
 }
+
+const REGISTER_PATHS = ["/auth/register", "/register", "/users/register"] as const;
+const LOGIN_PATHS = ["/auth/login", "/login", "/users/login"] as const;
 
 function getBmiCategory(bmi: number): string {
   if (bmi < 18.5) return "Underweight";
@@ -44,32 +48,10 @@ function readOptionalUserId(value: unknown): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : undefined;
 }
 
-function fallbackNameFromInput(
-  input?: Partial<RegisterRequest | LoginRequest>,
-): string {
-  if (
-    input &&
-    "name" in input &&
-    typeof input.name === "string" &&
-    input.name.trim()
-  ) {
-    return input.name.trim();
-  }
-  if (
-    input &&
-    "email" in input &&
-    typeof input.email === "string" &&
-    input.email.includes("@")
-  ) {
-    return input.email.split("@")[0] || "User";
-  }
-  return "User";
-}
-
 function normalizeAuthResponse(
   raw: unknown,
   input?: Partial<RegisterRequest | LoginRequest>,
-): AuthResponse {
+): AuthResponse | null {
   const data = (raw ?? {}) as any;
   const nested = data?.data ?? data?.result ?? {};
 
@@ -140,11 +122,25 @@ function normalizeAuthResponse(
   const token =
     typeof tokenCandidate === "string" && tokenCandidate.trim() !== ""
       ? tokenCandidate.trim()
-      : `fallback-token-${Date.now()}`;
+      : null;
+
+  if (!token) return null;
+
+  const userId =
+    readOptionalUserId(userSource?.id) ??
+    readOptionalUserId(userSource?.userId) ??
+    readOptionalUserId(userSource?._id) ??
+    readOptionalUserId(data?.id) ??
+    readOptionalUserId(data?.userId) ??
+    readOptionalUserId(data?._id) ??
+    readOptionalUserId(nested?.id) ??
+    readOptionalUserId(nested?.userId) ??
+    readOptionalUserId(nested?._id);
 
   return {
     token,
     user: {
+      id: userId,
       name: String(name),
       bmi,
       bmiCategory,
@@ -159,12 +155,12 @@ function normalizeAuthResponse(
 export async function register(
   payload: RegisterRequest,
 ): Promise<AuthResponse> {
+  let raw: unknown;
   try {
-    const res = await apiRequest<unknown>("/auth/register", {
+    raw = await apiRequestFirstPath<unknown>(REGISTER_PATHS, {
       method: "POST",
       body: payload,
     });
-    return normalizeAuthResponse(res, payload);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 400 || e.status === 422)) {
       const minimalPayload = {
@@ -172,14 +168,20 @@ export async function register(
         email: payload.email,
         password: payload.password,
       };
-      const fallbackRes = await apiRequest<unknown>("/auth/register", {
+      raw = await apiRequestFirstPath<unknown>(REGISTER_PATHS, {
         method: "POST",
         body: minimalPayload,
       });
-      return normalizeAuthResponse(fallbackRes, payload);
+    } else {
+      throw e;
     }
-    throw e;
   }
+
+  const normalized = normalizeAuthResponse(raw, payload);
+  if (normalized) return normalized;
+
+  // Some APIs create user on register but only return JWT from login.
+  return login({ email: payload.email, password: payload.password });
 }
 
 export interface LoginRequest {
@@ -188,9 +190,13 @@ export interface LoginRequest {
 }
 
 export async function login(payload: LoginRequest): Promise<AuthResponse> {
-  const res = await apiRequest<unknown>("/auth/login", {
+  const res = await apiRequestFirstPath<unknown>(LOGIN_PATHS, {
     method: "POST",
     body: payload,
   });
-  return normalizeAuthResponse(res, payload);
+  const normalized = normalizeAuthResponse(res, payload);
+  if (!normalized) {
+    throw new Error("Login succeeded but no auth token was returned by the API.");
+  }
+  return normalized;
 }

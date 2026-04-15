@@ -1,5 +1,5 @@
-import { apiRequestAuth, apiRequestAuthFirstPath } from "./apiClient";
 import type { MealType } from "../store/mealLogStore";
+import { apiRequestAuth, apiRequestAuthFirstPath } from "./apiClient";
 
 export type FoodLogFilter = "daily" | "monthly" | "yearly";
 
@@ -92,7 +92,9 @@ export async function createFoodLog(
         calories: payload.calories,
         ...(payload.weight != null ? { weight: payload.weight } : {}),
         ...(payload.volume != null ? { volume: payload.volume } : {}),
-        ...(payload.mealType ? { mealType: toApiMealType(payload.mealType) } : {}),
+        ...(payload.mealType
+          ? { mealType: toApiMealType(payload.mealType) }
+          : {}),
       },
     },
     token,
@@ -129,7 +131,9 @@ export async function updateFoodLog(
         ...(payload.calories != null ? { calories: payload.calories } : {}),
         ...(payload.weight != null ? { weight: payload.weight } : {}),
         ...(payload.volume != null ? { volume: payload.volume } : {}),
-        ...(payload.mealType ? { mealType: toApiMealType(payload.mealType) } : {}),
+        ...(payload.mealType
+          ? { mealType: toApiMealType(payload.mealType) }
+          : {}),
       },
     },
     token,

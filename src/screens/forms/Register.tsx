@@ -40,9 +40,10 @@ export function RegisterScreen({ navigation }: Props) {
   const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const { token, setSession, setDailyCalorieGoal } = useAuth();
+  const { setSession, setDailyCalorieGoal } = useAuth();
 
   const [step, setStep] = useState<"profile" | "goal">("profile");
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -154,6 +155,7 @@ export function RegisterScreen({ navigation }: Props) {
         });
 
         setSession(res.token, res.user);
+        setSessionToken(res.token);
 
         setBmi(res.user.bmi);
         setBmiCategory(res.user.bmiCategory);
@@ -176,8 +178,8 @@ export function RegisterScreen({ navigation }: Props) {
     }
 
     try {
-      if (isAuthenticatedApiToken(token)) {
-        await upsertDailyCalorieGoal(token!, goalNum);
+      if (isAuthenticatedApiToken(sessionToken)) {
+        await upsertDailyCalorieGoal(sessionToken!, goalNum);
       }
       setDailyCalorieGoal(goalNum);
       navigation.replace("MainTabs");
