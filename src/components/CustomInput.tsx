@@ -9,6 +9,7 @@ import {
   ViewStyle,
 } from "react-native";
 import type { InputType } from "../types";
+import { Design } from "../utils/designSystem";
 import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
 
 export interface CustomInputProps extends Omit<TextInputProps, "style"> {
@@ -19,6 +20,8 @@ export interface CustomInputProps extends Omit<TextInputProps, "style"> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   onRightIconPress?: () => void;
+  /** Dark charcoal field — aligns with DESIGN.md surfaces */
+  variant?: "default" | "dark";
 }
 
 const getKeyboardType = (type: InputType): TextInputProps["keyboardType"] => {
@@ -69,23 +72,34 @@ export function CustomInput({
   leftIcon,
   rightIcon,
   onRightIconPress,
+  variant = "default",
   ...rest
 }: CustomInputProps) {
   const isPassword = type === "password" || secureTextEntry;
+  const isDark = variant === "dark";
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.inputRow, error ? styles.inputError : null]}>
+      {label ? (
+        <Text style={[styles.label, isDark && styles.labelDark]}>{label}</Text>
+      ) : null}
+      <View
+        style={[
+          styles.inputRow,
+          isDark && styles.inputRowDark,
+          error ? (isDark ? styles.inputErrorDark : styles.inputError) : null,
+        ]}
+      >
         {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
           style={[
             styles.input,
+            isDark && styles.inputDark,
             leftIcon && styles.inputWithLeftIcon,
             rightIcon && styles.inputWithRightIcon,
           ]}
           placeholder={placeholder ?? getPlaceholder(type)}
-          placeholderTextColor={Colors.placeholder}
+          placeholderTextColor={isDark ? Design.secondary : Colors.placeholder}
           keyboardType={getKeyboardType(type)}
           autoCapitalize={getAutoCapitalize(type)}
           autoCorrect={type !== "email"}
@@ -108,7 +122,11 @@ export function CustomInput({
           )
         ) : null}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.errorText, isDark && styles.errorTextDark]}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -125,6 +143,11 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
     fontWeight: "500",
   },
+  labelDark: {
+    color: Design.onSurfaceVariant,
+    letterSpacing: 0.3,
+    fontWeight: "600",
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -133,12 +156,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     borderRadius: BorderRadius.md,
   },
+  inputRowDark: {
+    backgroundColor: Design.surfaceContainerHigh,
+    borderWidth: 1,
+    borderColor: Design.outlineVariant,
+  },
   input: {
     flex: 1,
     paddingVertical: Spacing.sm + 4,
     paddingHorizontal: Spacing.md,
     fontSize: FontSize.md,
     color: Colors.text,
+  },
+  inputDark: {
+    color: Design.display,
   },
   inputWithLeftIcon: {
     paddingLeft: Spacing.xs,
@@ -159,9 +190,15 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: Colors.error,
   },
+  inputErrorDark: {
+    borderColor: Design.errorSoft,
+  },
   errorText: {
     fontSize: FontSize.sm,
     color: Colors.error,
     marginTop: Spacing.xs,
+  },
+  errorTextDark: {
+    color: Design.errorSoft,
   },
 });

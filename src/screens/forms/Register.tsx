@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowRightIcon,
   BackArrowIcon,
@@ -20,18 +21,20 @@ import {
   MailIcon,
   UserIcon,
 } from "../../components";
-import { upsertDailyCalorieGoal } from "../../services/dashboardService";
-import { isAuthenticatedApiToken } from "../../store/dashboardOverviewStore";
 import { register as registerApi } from "../../services/authService";
+import { upsertDailyCalorieGoal } from "../../services/dashboardService";
 import { useAuth } from "../../store/authStore";
+import { isAuthenticatedApiToken } from "../../store/dashboardOverviewStore";
 import type { RootStackParamList } from "../../types";
-import { BorderRadius, Colors, FontSize, Spacing } from "../../utils/theme";
+import { Design } from "../../utils/designSystem";
+import { BorderRadius, FontSize, Spacing } from "../../utils/theme";
 
 type WeightSuggestion = "Gain" | "Maintain" | "Lose";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Register">;
 
 export function RegisterScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -201,15 +204,15 @@ export function RegisterScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
         <TouchableOpacity
           onPress={goBack}
           style={styles.backButton}
           activeOpacity={0.7}
         >
-          <BackArrowIcon />
+          <BackArrowIcon color={Design.display} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Your Account</Text>
+        <Text style={styles.headerTitle}>Create account</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -223,65 +226,72 @@ export function RegisterScreen({ navigation }: Props) {
         <Text style={styles.sectionTitle}>Your Profile</Text>
 
         <CustomInput
-          label="Full Name"
+          label="FULL NAME"
           value={fullName}
           onChangeText={setFullName}
           error={errors.fullName}
-          leftIcon={<UserIcon />}
+          leftIcon={<UserIcon color={Design.primary} />}
           autoComplete="name"
+          variant="dark"
         />
         <CustomInput
-          label="Email Address"
+          label="EMAIL ADDRESS"
           type="email"
           value={email}
           onChangeText={setEmail}
           error={errors.email}
-          leftIcon={<MailIcon />}
+          leftIcon={<MailIcon color={Design.primary} />}
           autoComplete="email"
+          variant="dark"
         />
         <CustomInput
-          label="Password"
+          label="PASSWORD"
           type="password"
           value={password}
           onChangeText={setPassword}
           error={errors.password}
           secureTextEntry={!showPassword}
-          leftIcon={<LockIcon />}
-          rightIcon={<EyeIcon />}
+          leftIcon={<LockIcon color={Design.primary} />}
+          rightIcon={<EyeIcon color={Design.onSurfaceVariant} />}
           onRightIconPress={() => setShowPassword((p) => !p)}
           autoComplete="password-new"
+          variant="dark"
         />
         <CustomInput
-          label="Age"
+          label="AGE"
           value={age}
           onChangeText={setAge}
           error={errors.age}
           keyboardType="number-pad"
           placeholder="e.g. 25"
+          variant="dark"
         />
         <CustomInput
-          label="Gender"
+          label="GENDER"
           value={gender}
           onChangeText={setGender}
           error={errors.gender}
-          rightIcon={<DropdownIcon />}
+          rightIcon={<DropdownIcon color={Design.onSurfaceVariant} />}
           placeholder="e.g. Male"
+          variant="dark"
         />
         <CustomInput
-          label="Height (cm)"
+          label="HEIGHT (CM)"
           value={height}
           onChangeText={setHeight}
           error={errors.height}
           keyboardType="number-pad"
           placeholder="e.g. 175"
+          variant="dark"
         />
         <CustomInput
-          label="Weight (kg)"
+          label="WEIGHT (KG)"
           value={weight}
           onChangeText={setWeight}
           error={errors.weight}
           keyboardType="decimal-pad"
           placeholder="e.g. 70"
+          variant="dark"
         />
         {step === "profile" ? (
           <View style={styles.profileHintWrap}>
@@ -310,29 +320,40 @@ export function RegisterScreen({ navigation }: Props) {
             </View>
 
             <CustomInput
-              label="Daily calorie goal (kcal)"
+              label="DAILY CALORIE GOAL (KCAL)"
               value={dailyCalorieGoal}
               onChangeText={setDailyCalorieGoalInput}
               error={dailyGoalError}
               keyboardType="numeric"
               placeholder="e.g. 2000"
+              variant="dark"
             />
           </View>
         ) : null}
 
-        {apiError ? <Text style={styles.errorText}>{apiError}</Text> : null}
+        {apiError ? (
+          <View style={styles.apiErrorBanner}>
+            <Text style={styles.errorText}>{apiError}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.scrollBottomPadding} />
       </ScrollView>
 
-      <View style={styles.fixedFooter}>
+      <View
+        style={[
+          styles.fixedFooter,
+          { paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.md },
+        ]}
+      >
         <CustomButton
           title={
             step === "profile" ? "Create Account" : "Continue to Dashboard"
           }
           onPress={handlePrimaryAction}
           style={styles.createButton}
-          rightIcon={<ArrowRightIcon size={18} />}
+          textStyle={styles.createButtonText}
+          rightIcon={<ArrowRightIcon size={18} color={Design.onPrimary} />}
           loading={loading}
           disabled={loading}
         />
@@ -344,25 +365,24 @@ export function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Design.surface,
   },
   header: {
-    marginTop: Spacing.xl,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Design.surface,
   },
   backButton: {
     padding: Spacing.xs,
   },
   headerTitle: {
     fontSize: FontSize.lg,
-    fontWeight: "700",
-    color: Colors.text,
+    fontWeight: "800",
+    color: Design.display,
+    letterSpacing: -0.2,
   },
   headerSpacer: {
     width: 40,
@@ -376,75 +396,80 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   sectionLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-    color: Colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+    color: Design.primary,
+    letterSpacing: 1.6,
     marginBottom: Spacing.xs,
   },
   sectionTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: "700",
-    color: Colors.text,
+    fontSize: FontSize.xl + 2,
+    fontWeight: "800",
+    color: Design.display,
     marginBottom: Spacing.lg,
+    letterSpacing: -0.3,
   },
   goalTitle: {
     fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.text,
+    fontWeight: "700",
+    color: Design.display,
     marginTop: Spacing.sm,
     marginBottom: Spacing.md,
   },
   profileHintWrap: {
     marginTop: Spacing.lg,
-    padding: Spacing.md,
+    padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Design.surfaceContainerHigh,
   },
   profileHint: {
-    color: Colors.textSecondary,
+    color: Design.onSurfaceVariant,
     fontSize: FontSize.sm,
-    lineHeight: 20,
+    lineHeight: 22,
     fontWeight: "500",
   },
   goalStepWrap: {
     marginTop: Spacing.lg,
   },
   bmiCard: {
-    padding: Spacing.md,
+    padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Design.surfaceContainerHigh,
     marginBottom: Spacing.md,
   },
   bmiValue: {
     fontSize: FontSize.xl + 4,
-    fontWeight: "700",
-    color: Colors.text,
+    fontWeight: "800",
+    color: Design.display,
     marginBottom: Spacing.xs,
+    letterSpacing: -0.5,
   },
   bmiUnit: {
     fontSize: FontSize.md,
     fontWeight: "600",
-    color: Colors.textSecondary,
+    color: Design.onSurfaceVariant,
   },
   bmiCategoryText: {
     fontSize: FontSize.md,
     fontWeight: "600",
-    color: Colors.textSecondary,
+    color: Design.onSurfaceVariant,
     marginBottom: Spacing.sm,
   },
   suggestionText: {
     fontSize: FontSize.md,
     fontWeight: "700",
-    color: Colors.primary,
+    color: Design.primaryContainer,
+  },
+  apiErrorBanner: {
+    marginTop: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
   },
   errorText: {
-    color: Colors.error,
+    color: Design.errorSoft,
     fontSize: FontSize.sm,
-    marginTop: Spacing.sm,
+    fontWeight: "600",
   },
   goalRow: {
     flexDirection: "row",
@@ -458,11 +483,17 @@ const styles = StyleSheet.create({
   },
   fixedFooter: {
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    paddingBottom: Spacing.xl + Spacing.md,
-    backgroundColor: Colors.background,
+    paddingTop: Spacing.md,
+    backgroundColor: Design.surfaceContainerLow,
   },
   createButton: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Design.primaryContainer,
+    borderRadius: BorderRadius.lg,
+    minHeight: 52,
+  },
+  createButtonText: {
+    color: Design.onPrimary,
+    fontWeight: "700",
+    fontSize: FontSize.md,
   },
 });

@@ -3,7 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
 import { useAuth } from "../store/authStore";
-import { BorderRadius, Colors, FontSize, Spacing } from "../utils/theme";
+import { Design } from "../utils/designSystem";
+import { BorderRadius, FontSize, Spacing } from "../utils/theme";
 
 function getBmiCategory(bmi: number): string {
   if (bmi < 18.5) return "Underweight";
@@ -95,8 +96,11 @@ export function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+        <Text style={styles.eyebrow}>YOUR ACCOUNT</Text>
         <Text style={styles.heading}>Profile</Text>
-        <Text style={styles.subheading}>Your health details</Text>
+        <Text style={styles.subheading}>
+          Edit your details — boundaries use tone, not harsh lines.
+        </Text>
       </View>
 
       <ScrollView
@@ -107,78 +111,102 @@ export function ProfileScreen() {
             paddingBottom: insets.bottom + Spacing.lg,
           },
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.card}>
-          <Text style={styles.name}>Your profile</Text>
-          <Text style={styles.cardHint}>
-            Edit your details and save to recalculate BMI.
+        <View style={styles.introCard}>
+          <Text style={styles.introTitle}>Health snapshot</Text>
+          <Text style={styles.introBody}>
+            Save to sync your profile and refresh BMI from height and weight.
           </Text>
         </View>
 
         <View style={styles.card}>
           <CustomInput
-            label="Name"
+            label="NAME"
             value={name}
             onChangeText={setName}
             error={errors.name}
+            variant="dark"
           />
           <CustomInput
-            label="Weight (kg)"
+            label="WEIGHT (KG)"
             value={weight}
             onChangeText={setWeight}
             keyboardType="decimal-pad"
             error={errors.weight}
+            variant="dark"
           />
           <CustomInput
-            label="Height (cm)"
+            label="HEIGHT (CM)"
             value={height}
             onChangeText={setHeight}
             keyboardType="decimal-pad"
             error={errors.height}
+            variant="dark"
           />
           <CustomInput
-            label="Age"
+            label="AGE"
             value={age}
             onChangeText={setAge}
             keyboardType="number-pad"
             error={errors.age}
+            variant="dark"
           />
           <CustomInput
-            label="Gender"
+            label="GENDER"
             value={gender}
             onChangeText={setGender}
             placeholder="male or female"
             error={errors.gender}
+            variant="dark"
           />
+
+          <Text style={styles.metricsSectionLabel}>VITALITY METRIC</Text>
           <View style={styles.metricsCard}>
-            <Row
+            <MetricRow
               label="BMI"
-              value={computed.bmi > 0 ? computed.bmi.toFixed(1) : "Not available"}
+              value={computed.bmi > 0 ? computed.bmi.toFixed(1) : "—"}
+              emphasize
             />
-            <Row label="BMI Category" value={computed.bmiCategory} />
-            <Row label="Suggestion" value={computed.suggestion} isLast />
+            <View style={styles.metricGap} />
+            <MetricRow label="Category" value={computed.bmiCategory} />
+            <View style={styles.metricGap} />
+            <MetricRow label="Suggestion" value={computed.suggestion} isLast />
           </View>
+
           {saveMessage ? <Text style={styles.successText}>{saveMessage}</Text> : null}
-          <CustomButton title="Save Profile" onPress={handleSave} />
+          <CustomButton
+            title="Save profile"
+            onPress={handleSave}
+            style={styles.saveButton}
+            textStyle={styles.saveButtonText}
+          />
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function Row({
+function MetricRow({
   label,
   value,
+  emphasize = false,
   isLast = false,
 }: {
   label: string;
   value: string;
+  emphasize?: boolean;
   isLast?: boolean;
 }) {
   return (
-    <View style={[styles.row, isLast ? styles.lastRow : null]}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={[styles.metricRow, isLast && styles.metricRowLast]}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text
+        style={[styles.metricValue, emphasize && styles.metricValueEmphasis]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -186,84 +214,119 @@ function Row({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Design.surface,
   },
   header: {
     paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Design.secondary,
+    letterSpacing: 1.6,
+    marginBottom: Spacing.xs,
   },
   heading: {
-    fontSize: FontSize.xl + 4,
-    fontWeight: "700",
-    color: Colors.text,
+    fontSize: FontSize.xl + 8,
+    fontWeight: "800",
+    color: Design.display,
+    letterSpacing: -0.5,
   },
   subheading: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    color: Design.onSurfaceVariant,
+    marginTop: Spacing.sm,
+    maxWidth: 320,
   },
   scroll: {
     flex: 1,
   },
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.sm,
+  },
+  introCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
+    marginBottom: Spacing.lg,
+  },
+  introTitle: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: Design.display,
+    marginBottom: Spacing.xs,
+  },
+  introBody: {
+    fontSize: FontSize.sm,
+    lineHeight: 22,
+    color: Design.onSurfaceVariant,
   },
   card: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Design.surfaceContainerLow,
     marginBottom: Spacing.lg,
   },
-  name: {
-    fontSize: FontSize.lg,
+  metricsSectionLabel: {
+    fontSize: 10,
     fontWeight: "700",
-    color: Colors.text,
-  },
-  cardHint: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginTop: Spacing.xs,
+    color: Design.onSurfaceVariant,
+    letterSpacing: 1.4,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   metricsCard: {
-    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
+    padding: Spacing.md,
     marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
   },
-  row: {
+  metricRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    alignItems: "flex-start",
     gap: Spacing.md,
   },
-  lastRow: {
-    borderBottomWidth: 0,
+  metricRowLast: {},
+  metricGap: {
+    height: Spacing.md,
   },
-  rowLabel: {
+  metricLabel: {
     fontSize: FontSize.sm,
     fontWeight: "600",
-    color: Colors.textSecondary,
+    color: Design.onSurfaceVariant,
+    flexShrink: 0,
   },
-  rowValue: {
+  metricValue: {
     fontSize: FontSize.sm,
     fontWeight: "700",
-    color: Colors.text,
-    textTransform: "capitalize",
+    color: Design.display,
+    textAlign: "right",
+    flex: 1,
+  },
+  metricValueEmphasis: {
+    fontSize: FontSize.xl + 2,
+    fontWeight: "800",
+    color: Design.primaryContainer,
+    letterSpacing: -0.5,
   },
   successText: {
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: Design.primary,
     fontWeight: "600",
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  saveButton: {
+    backgroundColor: Design.primaryContainer,
+    borderRadius: BorderRadius.lg,
+    minHeight: 52,
+  },
+  saveButtonText: {
+    color: Design.onPrimary,
+    fontWeight: "700",
+    fontSize: FontSize.md,
   },
 });
-

@@ -3,20 +3,24 @@ import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../../components";
 import { login as loginApi } from "../../services/authService";
 import { useAuth } from "../../store/authStore";
 import type { RootStackParamList } from "../../types";
-import { Colors, FontSize, Spacing } from "../../utils/theme";
+import { Design } from "../../utils/designSystem";
+import { BorderRadius, FontSize, Spacing } from "../../utils/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Login">;
 
 export function LoginScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
@@ -74,35 +78,53 @@ export function LoginScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.content}>
-        <Text style={styles.heading}>Welcome back</Text>
-        <Text style={styles.subheading}>Sign in to continue</Text>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + Spacing.xl,
+            paddingBottom: insets.bottom + Spacing.xl,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.eyebrow}>WELCOME BACK</Text>
+        <Text style={styles.heading}>Sign in</Text>
+        <Text style={styles.subheading}>
+          Continue your wellness journey with calm, focused tracking.
+        </Text>
 
         {errorMessage ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
         ) : null}
 
         <CustomInput
-          label="Email"
+          label="EMAIL"
           type="email"
           value={email}
           onChangeText={setEmail}
           error={emailError}
           autoComplete="email"
+          variant="dark"
         />
         <CustomInput
-          label="Password"
+          label="PASSWORD"
           type="password"
           value={password}
           onChangeText={setPassword}
           error={passwordError}
           autoComplete="password"
+          variant="dark"
         />
 
         <CustomButton
           title="Log in"
           onPress={handleLogin}
-          style={styles.button}
+          style={styles.primaryButton}
+          textStyle={styles.primaryButtonText}
           loading={loading}
           disabled={loading}
         />
@@ -113,7 +135,7 @@ export function LoginScreen({ navigation }: Props) {
             <Text style={styles.link}>Register</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -121,44 +143,70 @@ export function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
-    justifyContent: "center",
+    backgroundColor: Design.surface,
   },
-  content: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
     paddingHorizontal: Spacing.lg,
   },
-  heading: {
-    fontSize: FontSize.xl + 4,
+  eyebrow: {
+    fontSize: 11,
     fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.xs,
+    color: Design.secondary,
+    letterSpacing: 1.8,
+    marginBottom: Spacing.sm,
+  },
+  heading: {
+    fontSize: FontSize.xl + 12,
+    fontWeight: "800",
+    color: Design.display,
+    marginBottom: Spacing.sm,
+    letterSpacing: -0.5,
   },
   subheading: {
     fontSize: FontSize.md,
-    color: Colors.textSecondary,
+    lineHeight: 24,
+    color: Design.onSurfaceVariant,
     marginBottom: Spacing.xl,
+    maxWidth: 340,
   },
-  button: {
-    marginTop: Spacing.sm,
+  errorBanner: {
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
+  },
+  errorText: {
+    color: Design.errorSoft,
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+  },
+  primaryButton: {
+    marginTop: Spacing.md,
+    backgroundColor: Design.primaryContainer,
+    borderRadius: BorderRadius.lg,
+    minHeight: 52,
+  },
+  primaryButtonText: {
+    color: Design.onPrimary,
+    fontWeight: "700",
+    fontSize: FontSize.md,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
+    flexWrap: "wrap",
   },
   footerText: {
     fontSize: FontSize.md,
-    color: Colors.textSecondary,
+    color: Design.onSurfaceVariant,
   },
   link: {
     fontSize: FontSize.md,
-    fontWeight: "600",
-    color: Colors.primary,
-  },
-  errorText: {
-    color: Colors.error,
-    fontSize: FontSize.sm,
-    marginBottom: Spacing.sm,
+    fontWeight: "700",
+    color: Design.primary,
   },
 });

@@ -15,12 +15,26 @@ export function AppTabsNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarInactiveTintColor: "#8A8A8A",
+        // tabBarBackground: () => <View style={{ backgroundColor: "#1E1E1E" }} />,
+        tabBarStyle: {
+          backgroundColor: "#0F0F0F",
+          borderTopColor: "#1F1F1F",
+          height: 86,
+          paddingTop: 6,
+          paddingBottom: 38,
+          //marginBottom: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "700",
+          letterSpacing: 0.4,
+        },
         tabBarIcon: ({ color, size, focused }) => {
           if (route.name === "DashboardTab") {
             return (
               <Ionicons
-                name={focused ? "home" : "home-outline"}
+                name={focused ? "grid" : "grid-outline"}
                 color={color}
                 size={size}
               />
@@ -29,7 +43,7 @@ export function AppTabsNavigator() {
           if (route.name === "FoodHistoryTab") {
             return (
               <Ionicons
-                name={focused ? "restaurant" : "restaurant-outline"}
+                name={focused ? "time" : "time-outline"}
                 color={color}
                 size={size}
               />
@@ -54,7 +68,7 @@ export function AppTabsNavigator() {
       <Tab.Screen
         name="FoodHistoryTab"
         component={FoodHistoryScreen}
-        options={{ title: "Food" }}
+        options={{ title: "History" }}
       />
       <Tab.Screen
         name="ProfileTab"
@@ -64,4 +78,3 @@ export function AppTabsNavigator() {
     </Tab.Navigator>
   );
 }
-
