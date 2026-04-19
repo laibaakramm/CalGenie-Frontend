@@ -5,8 +5,9 @@ import { LogoIcon } from "../components/LogoIcon";
 import type { RootStackParamList } from "../types";
 import { FontSize, Spacing } from "../utils/theme";
 
-const PRIMARY = "#10B77F";
-const MUTED = "#64748B";
+const PRIMARY = "#6EE591";
+const MUTED = "#C8C6C5";
+const SURFACE = "#131313";
 
 const SPLASH_DURATION_MS = 3000;
 
@@ -35,7 +36,7 @@ export function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: SURFACE,
     alignItems: "center",
     justifyContent: "center",
   },

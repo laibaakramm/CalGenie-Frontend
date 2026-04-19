@@ -12,6 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -60,6 +61,7 @@ export function ScanningScreen() {
   const [scanBusy, setScanBusy] = useState(false);
   const [hasCompletedCalibration, setHasCompletedCalibration] = useState(false);
   const [calibrationHydrated, setCalibrationHydrated] = useState(false);
+  const [isMealPickerVisible, setIsMealPickerVisible] = useState(false);
 
   const firstName = useMemo(() => {
     const n = user?.name?.trim();
@@ -241,14 +243,8 @@ export function ScanningScreen() {
   );
 
   const onAddToDiary = useCallback(() => {
-    Alert.alert("Add to diary", "Which meal?", [
-      ...MEAL_ORDER.map((meal) => ({
-        text: MEAL_LABELS[meal],
-        onPress: () => pickMealAndAdd(meal),
-      })),
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }, [pickMealAndAdd]);
+    setIsMealPickerVisible(true);
+  }, []);
 
   const controlsDisabled = !user?.id || !calibrationHydrated || scanBusy;
 
@@ -418,6 +414,39 @@ export function ScanningScreen() {
             ) : null}
           </View>
         )}
+
+        {/* Meal Picker Modal */}
+        <Modal
+          visible={isMealPickerVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsMealPickerVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Add to diary</Text>
+              <Text style={styles.modalSubtitle}>Which meal?</Text>
+              {MEAL_ORDER.map((meal) => (
+                <TouchableOpacity
+                  key={meal}
+                  style={styles.modalOptionBtn}
+                  onPress={() => {
+                    setIsMealPickerVisible(false);
+                    pickMealAndAdd(meal);
+                  }}
+                >
+                  <Text style={styles.modalOptionText}>{MEAL_LABELS[meal]}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setIsMealPickerVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -669,5 +698,57 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: "600",
     color: GREEN,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: "#1E1E1E",
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#333333",
+  },
+  modalTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    marginBottom: Spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: FontSize.sm,
+    color: "#A0A0A0",
+    marginBottom: Spacing.lg,
+  },
+  modalOptionBtn: {
+    width: "100%",
+    paddingVertical: Spacing.md,
+    backgroundColor: "#2A2A2A",
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    alignItems: "center",
+  },
+  modalOptionText: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: GREEN,
+  },
+  modalCancelBtn: {
+    width: "100%",
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.xs,
+    alignItems: "center",
+  },
+  modalCancelText: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: "#8E8E8E",
   },
 });

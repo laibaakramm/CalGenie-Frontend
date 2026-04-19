@@ -44,6 +44,9 @@ export function normalizeDashboardOverview(raw: unknown): DashboardOverview {
             (typeof r.foodName === "string" && r.foodName) ||
             (typeof r.food_name === "string" && r.food_name) ||
             (typeof r.name === "string" && r.name) ||
+            (typeof r.food === "string" && r.food) ||
+            (typeof r.title === "string" && r.title) ||
+            (typeof r.item === "string" && r.item) ||
             "Food";
           const count = readNumber(r.count ?? r.times ?? r.quantity, 0);
           return { foodName, count: Math.max(0, Math.round(count)) };

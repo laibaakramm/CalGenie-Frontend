@@ -1,4 +1,4 @@
-import { ApiError, apiRequestFirstPath } from "./apiClient";
+import { ApiError, apiRequestFirstPath, apiRequestAuthFirstPath } from "./apiClient";
 
 export type Gender = "male" | "female" | string;
 
@@ -199,4 +199,18 @@ export async function login(payload: LoginRequest): Promise<AuthResponse> {
     throw new Error("Login succeeded but no auth token was returned by the API.");
   }
   return normalized;
+}
+
+export async function updateProfile(
+  token: string,
+  payload: Partial<AuthUser>,
+): Promise<void> {
+  await apiRequestAuthFirstPath<unknown>(
+    ["/users/me", "/profile", "/me"],
+    {
+      method: "PUT",
+      body: payload,
+    },
+    token,
+  );
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
+import { updateProfile } from "../services/authService";
 import { useAuth } from "../store/authStore";
 import { Design } from "../utils/designSystem";
 import { BorderRadius, FontSize, Spacing } from "../utils/theme";
@@ -21,7 +22,7 @@ function getWeightSuggestionFromBmi(bmi: number): string {
 
 export function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const [name, setName] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
@@ -29,6 +30,7 @@ export function ProfileScreen() {
   const [gender, setGender] = useState("");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -58,7 +60,7 @@ export function ProfileScreen() {
     };
   }, [height, weight]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nextErrors: Record<string, string> = {};
     const ageNum = Number(age);
     const weightNum = Number(weight);
@@ -81,7 +83,7 @@ export function ProfileScreen() {
       return;
     }
 
-    updateUser({
+    const updates = {
       name: name.trim(),
       age: ageNum,
       weight: weightNum,
@@ -89,7 +91,21 @@ export function ProfileScreen() {
       gender: normalizedGender,
       bmi: computed.bmi,
       bmiCategory: computed.bmiCategory,
-    });
+    };
+
+    if (token) {
+      setLoading(true);
+      try {
+        await updateProfile(token, updates);
+      } catch (e) {
+        setErrors({ general: e instanceof Error ? e.message : "Failed to sync profile to server" });
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+    }
+
+    updateUser(updates);
     setSaveMessage("Profile updated successfully");
   };
 
@@ -174,10 +190,13 @@ export function ProfileScreen() {
             <MetricRow label="Suggestion" value={computed.suggestion} isLast />
           </View>
 
+          {errors.general ? <Text style={styles.errorText}>{errors.general}</Text> : null}
           {saveMessage ? <Text style={styles.successText}>{saveMessage}</Text> : null}
           <CustomButton
             title="Save profile"
             onPress={handleSave}
+            loading={loading}
+            disabled={loading}
             style={styles.saveButton}
             textStyle={styles.saveButtonText}
           />
@@ -316,6 +335,12 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: FontSize.sm,
     color: Design.primary,
+    fontWeight: "600",
+    marginBottom: Spacing.md,
+  },
+  errorText: {
+    fontSize: FontSize.sm,
+    color: Design.errorSoft,
     fontWeight: "600",
     marginBottom: Spacing.md,
   },

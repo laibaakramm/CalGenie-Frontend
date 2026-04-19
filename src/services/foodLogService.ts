@@ -57,6 +57,10 @@ function normalizeLogRecord(raw: unknown): FoodLogRecord {
       (typeof row.foodName === "string" && row.foodName) ||
       (typeof row.food_name === "string" && row.food_name) ||
       (typeof row.name === "string" && row.name) ||
+      (typeof row.food === "string" && row.food) ||
+      (typeof row.title === "string" && row.title) ||
+      (typeof row.description === "string" && row.description) ||
+      (typeof row.item === "string" && row.item) ||
       "Food",
     calories: Number.isFinite(caloriesNum) ? Math.max(0, caloriesNum) : 0,
     mealType: normalizeMealType(row.mealType ?? row.meal_type),

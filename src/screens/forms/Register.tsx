@@ -8,7 +8,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  Image,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { submitReferenceCalibration } from "../../services/foodDetectionService";
+import { setUserCalibrated } from "../../services/calibrationStorage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowRightIcon,
@@ -43,9 +48,9 @@ export function RegisterScreen({ navigation }: Props) {
   const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const { setSession, setDailyCalorieGoal } = useAuth();
+  const { setSession, setDailyCalorieGoal, user } = useAuth();
 
-  const [step, setStep] = useState<"profile" | "goal">("profile");
+  const [step, setStep] = useState<"profile" | "goal" | "calibration">("profile");
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +63,7 @@ export function RegisterScreen({ navigation }: Props) {
 
   const [dailyCalorieGoal, setDailyCalorieGoalInput] = useState("");
   const [dailyGoalError, setDailyGoalError] = useState<string | undefined>();
+  const [calibrationImage, setCalibrationImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -174,24 +180,70 @@ export function RegisterScreen({ navigation }: Props) {
       return;
     }
 
-    const goalNum = Number(dailyCalorieGoal);
-    if (!Number.isFinite(goalNum) || goalNum <= 0) {
-      setDailyGoalError("Enter a valid daily calorie goal");
+    if (step === "goal") {
+      const goalNum = Number(dailyCalorieGoal);
+      if (!Number.isFinite(goalNum) || goalNum <= 0) {
+        setDailyGoalError("Enter a valid daily calorie goal");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        if (isAuthenticatedApiToken(sessionToken)) {
+          await upsertDailyCalorieGoal(sessionToken!, goalNum);
+        }
+        setDailyCalorieGoal(goalNum);
+        setStep("calibration");
+      } catch (e) {
+        setApiError(
+          e instanceof Error
+            ? e.message
+            : "Unable to save goal right now. Please try again.",
+        );
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
-    try {
-      if (isAuthenticatedApiToken(sessionToken)) {
-        await upsertDailyCalorieGoal(sessionToken!, goalNum);
+    if (step === "calibration") {
+      if (calibrationImage && user?.id) {
+        setLoading(true);
+        try {
+          await submitReferenceCalibration(
+            {
+              uri: calibrationImage.uri,
+              mimeType: calibrationImage.mimeType ?? null,
+              fileName: calibrationImage.fileName ?? null,
+            },
+            user.id,
+            "credit_card"
+          );
+          await setUserCalibrated(user.id);
+        } catch (e) {
+          Alert.alert("Calibration Failed", e instanceof Error ? e.message : "Failed to calibrate.");
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
       }
-      setDailyCalorieGoal(goalNum);
       navigation.replace("MainTabs");
-    } catch (e) {
-      setApiError(
-        e instanceof Error
-          ? e.message
-          : "Unable to save goal right now. Please try again.",
-      );
+    }
+  };
+
+  const pickCalibrationImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== ImagePicker.PermissionStatus.GRANTED) {
+      Alert.alert("Permission needed", "Photo library access is required to upload an image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setCalibrationImage(result.assets[0]);
     }
   };
 
@@ -331,6 +383,29 @@ export function RegisterScreen({ navigation }: Props) {
           </View>
         ) : null}
 
+        {step === "calibration" ? (
+          <View style={styles.goalStepWrap}>
+            <Text style={styles.goalTitle}>Calibrate Camera</Text>
+            <Text style={styles.profileHint}>
+              Upload an image with a credit card to calibrate the app for accurate calorie tracking.
+            </Text>
+            
+            <TouchableOpacity style={styles.uploadBtn} onPress={pickCalibrationImage}>
+              <Text style={styles.uploadBtnText}>
+                {calibrationImage ? "Change Image" : "Upload Image"}
+              </Text>
+            </TouchableOpacity>
+
+            {calibrationImage && (
+              <Image 
+                source={{ uri: calibrationImage.uri }} 
+                style={styles.previewImage} 
+                resizeMode="cover"
+              />
+            )}
+          </View>
+        ) : null}
+
         {apiError ? (
           <View style={styles.apiErrorBanner}>
             <Text style={styles.errorText}>{apiError}</Text>
@@ -348,7 +423,13 @@ export function RegisterScreen({ navigation }: Props) {
       >
         <CustomButton
           title={
-            step === "profile" ? "Create Account" : "Continue to Dashboard"
+            step === "profile" 
+              ? "Create Account" 
+              : step === "goal" 
+                ? "Continue to Calibration" 
+                : calibrationImage 
+                  ? "Calibrate & Finish"
+                  : "Skip & Finish"
           }
           onPress={handlePrimaryAction}
           style={styles.createButton}
@@ -495,5 +576,25 @@ const styles = StyleSheet.create({
     color: Design.onPrimary,
     fontWeight: "700",
     fontSize: FontSize.md,
+  },
+  uploadBtn: {
+    backgroundColor: Design.surfaceContainerHighest,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    marginTop: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Design.outlineVariant,
+  },
+  uploadBtnText: {
+    color: Design.primary,
+    fontWeight: "600",
+    fontSize: FontSize.md,
+  },
+  previewImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
   },
 });

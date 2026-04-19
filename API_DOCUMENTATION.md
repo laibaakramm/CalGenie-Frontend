@@ -58,7 +58,21 @@ The CalGenie experience relies on **predictive AI image scanning** paired with a
     "password": "securepassword123"
   }
   ```
-- **Response**: `{ "token": "eyJh..." }`
+- **Response**:
+  ```json
+  {
+    "token": "eyJh...",
+    "user": {
+      "id": 1,
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "weight": 70,
+      "height": 175,
+      "age": 25,
+      "gender": "female"
+    }
+  }
+  ```
 
 ### Calibration & AI Scanning
 #### 3. Image Calibration
