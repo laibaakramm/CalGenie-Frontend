@@ -54,6 +54,7 @@ function normalizeLogRecord(raw: unknown): FoodLogRecord {
   return {
     id,
     foodName:
+      (typeof row.prediction === "string" && row.prediction) ||
       (typeof row.foodName === "string" && row.foodName) ||
       (typeof row.food_name === "string" && row.food_name) ||
       (typeof row.name === "string" && row.name) ||
