@@ -1,18 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -49,6 +51,7 @@ function assetToPickedImage(asset: ImagePicker.ImagePickerAsset): PickedImage {
 }
 
 export function ScanningScreen() {
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { addMealLog } = useMealLogs();
@@ -253,8 +256,21 @@ export function ScanningScreen() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={[styles.container, { paddingTop: insets.top + Spacing.sm }]}>
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.sm }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {firstName.slice(0, 1).toUpperCase()}
@@ -317,7 +333,7 @@ export function ScanningScreen() {
               <Image
                 source={{ uri: pickedImage.uri }}
                 style={styles.previewImage}
-                contentFit="cover"
+                contentFit="contain"
                 transition={200}
                 accessibilityLabel="Selected meal image"
               />
@@ -345,7 +361,7 @@ export function ScanningScreen() {
             style={[
               styles.sheet,
               {
-                paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm,
+                paddingBottom: Math.max(insets.bottom, Spacing.lg) + Spacing.sm,
               },
             ]}
           >
@@ -447,7 +463,7 @@ export function ScanningScreen() {
             </View>
           </View>
         </Modal>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -458,7 +474,7 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: BG,
     paddingHorizontal: Spacing.lg,
   },
@@ -466,6 +482,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.md,
+  },
+  backBtn: {
+    marginRight: Spacing.sm,
+    padding: Spacing.xs,
   },
   avatar: {
     width: 40,
@@ -537,8 +557,8 @@ const styles = StyleSheet.create({
     color: "#E8E8E8",
   },
   previewBlock: {
-    flex: 1,
-    minHeight: 280,
+    width: "100%",
+    height: 300,
     marginBottom: Spacing.md,
   },
   previewInner: {
@@ -546,7 +566,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
     backgroundColor: "#0D0D0D",
-    minHeight: 280,
   },
   previewImage: {
     ...StyleSheet.absoluteFillObject,

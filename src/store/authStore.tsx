@@ -4,8 +4,12 @@ import React, {
   useContext,
   useMemo,
   useState,
+  useEffect,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { AuthUser } from "../services/authService";
+
+const AUTH_STORAGE_KEY = "@CalGenie_AuthState";
 
 export type DailyCalorieGoal = number | null;
 
@@ -14,6 +18,7 @@ interface AuthContextValue {
   user: AuthUser | null;
   dailyCalorieGoal: DailyCalorieGoal;
   isAuthed: boolean;
+  isRestoring: boolean;
 
   setSession: (nextToken: string, nextUser: AuthUser) => void;
   clearSession: () => void;
@@ -28,29 +33,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [dailyCalorieGoal, setDailyCalorieGoalState] =
     useState<DailyCalorieGoal>(null);
+  const [isRestoring, setIsRestoring] = useState(true);
+
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const { token: t, user: u, dailyCalorieGoal: d } = JSON.parse(stored);
+          if (t && u) {
+            setToken(t);
+            setUser(u);
+            if (d !== undefined) {
+              setDailyCalorieGoalState(d);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load auth session", e);
+      } finally {
+        setIsRestoring(false);
+      }
+    }
+    loadSession();
+  }, []);
+
+  const saveSession = async (
+    t: string | null,
+    u: AuthUser | null,
+    d: DailyCalorieGoal
+  ) => {
+    try {
+      if (t && u) {
+        await AsyncStorage.setItem(
+          AUTH_STORAGE_KEY,
+          JSON.stringify({ token: t, user: u, dailyCalorieGoal: d })
+        );
+      } else {
+        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch (e) {
+      console.warn("Failed to save auth session", e);
+    }
+  };
 
   const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {
     setToken(nextToken);
     setUser(nextUser);
+    setDailyCalorieGoalState((prev) => {
+      saveSession(nextToken, nextUser, prev);
+      return prev;
+    });
   }, []);
 
   const clearSession = useCallback(() => {
     setToken(null);
     setUser(null);
     setDailyCalorieGoalState(null);
+    saveSession(null, null, null);
   }, []);
 
   const setDailyCalorieGoal = useCallback((goal: number) => {
     setDailyCalorieGoalState(goal);
+    setToken((prevToken) => {
+      setUser((prevUser) => {
+        saveSession(prevToken, prevUser, goal);
+        return prevUser;
+      });
+      return prevToken;
+    });
   }, []);
 
   const updateUser = useCallback((updates: Partial<AuthUser>) => {
     setUser((prev) => {
       if (!prev) return prev;
-      return {
+      const nextUser = {
         ...prev,
         ...updates,
       };
+      setToken((prevToken) => {
+        setDailyCalorieGoalState((prevGoal) => {
+          saveSession(prevToken, nextUser, prevGoal);
+          return prevGoal;
+        });
+        return prevToken;
+      });
+      return nextUser;
     });
   }, []);
 
@@ -60,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       dailyCalorieGoal,
       isAuthed: token != null && user != null,
+      isRestoring,
       setSession,
       clearSession,
       setDailyCalorieGoal,
@@ -69,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       token,
       user,
       dailyCalorieGoal,
+      isRestoring,
       setSession,
       clearSession,
       setDailyCalorieGoal,

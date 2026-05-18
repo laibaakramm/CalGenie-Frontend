@@ -1,7 +1,8 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { LogoIcon } from "../components/LogoIcon";
+import { useAuth } from "../store/authStore";
 import type { RootStackParamList } from "../types";
 import { FontSize, Spacing } from "../utils/theme";
 
@@ -14,12 +15,25 @@ const SPLASH_DURATION_MS = 3000;
 type Props = NativeStackScreenProps<RootStackParamList, "Splash">;
 
 export function SplashScreen({ navigation }: Props) {
+  const { isAuthed, isRestoring } = useAuth();
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace("Login");
+      setMinTimeElapsed(true);
     }, SPLASH_DURATION_MS);
     return () => clearTimeout(timer);
-  }, [navigation]);
+  }, []);
+
+  useEffect(() => {
+    if (!isRestoring && minTimeElapsed) {
+      if (isAuthed) {
+        navigation.replace("MainTabs");
+      } else {
+        navigation.replace("Login");
+      }
+    }
+  }, [isRestoring, minTimeElapsed, isAuthed, navigation]);
 
   return (
     <View style={styles.container}>

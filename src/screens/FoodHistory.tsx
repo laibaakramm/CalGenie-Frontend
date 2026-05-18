@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { FoodLogFilter } from "../services/foodLogService";
+import { useAuth } from "../store/authStore";
 import {
   MEAL_LABELS,
   MEAL_ORDER,
@@ -17,8 +19,6 @@ import {
   type MealType,
   useMealLogs,
 } from "../store/mealLogStore";
-import { useAuth } from "../store/authStore";
-import type { FoodLogFilter } from "../services/foodLogService";
 import { BorderRadius, FontSize, Spacing } from "../utils/theme";
 
 const BG = "#121212";
@@ -166,10 +166,10 @@ export function FoodHistoryScreen() {
           <Text style={styles.avatarText}>{firstName}</Text>
         </View>
         <Text style={styles.appName}>CalGenie</Text>
-        <TouchableOpacity style={styles.bellWrap} activeOpacity={0.7}>
+        {/* <TouchableOpacity style={styles.bellWrap} activeOpacity={0.7}>
           <Ionicons name="notifications-outline" size={22} color="#E8E8E8" />
           <View style={styles.bellDot} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <View style={styles.titleBlock}>

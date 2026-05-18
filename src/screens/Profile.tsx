@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
 import { updateProfile } from "../services/authService";
@@ -21,8 +22,9 @@ function getWeightSuggestionFromBmi(bmi: number): string {
 }
 
 export function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { user, token, updateUser } = useAuth();
+  const { user, token, updateUser, clearSession } = useAuth();
   const [name, setName] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
@@ -107,6 +109,11 @@ export function ProfileScreen() {
 
     updateUser(updates);
     setSaveMessage("Profile updated successfully");
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
   return (
@@ -199,6 +206,14 @@ export function ProfileScreen() {
             disabled={loading}
             style={styles.saveButton}
             textStyle={styles.saveButtonText}
+          />
+
+          <CustomButton
+            title="Logout"
+            onPress={handleLogout}
+            style={styles.logoutButton}
+            textStyle={styles.logoutButtonText}
+            variant="outline"
           />
         </View>
       </ScrollView>
@@ -351,6 +366,16 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: Design.onPrimary,
+    fontWeight: "700",
+    fontSize: FontSize.md,
+  },
+  logoutButton: {
+    marginTop: Spacing.md,
+    borderColor: Design.errorSoft,
+    minHeight: 52,
+  },
+  logoutButtonText: {
+    color: Design.errorSoft,
     fontWeight: "700",
     fontSize: FontSize.md,
   },
