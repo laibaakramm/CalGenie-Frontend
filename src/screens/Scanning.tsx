@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
+import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -62,9 +62,11 @@ export function ScanningScreen() {
   const [editFoodName, setEditFoodName] = useState("");
   const [editCaloriesText, setEditCaloriesText] = useState("");
   const [scanBusy, setScanBusy] = useState(false);
-  const [hasCompletedCalibration, setHasCompletedCalibration] = useState(false);
+  const [localCalibrated, setLocalCalibrated] = useState(false);
   const [calibrationHydrated, setCalibrationHydrated] = useState(false);
   const [isMealPickerVisible, setIsMealPickerVisible] = useState(false);
+
+  const hasCompletedCalibration = !!user?.calibration || localCalibrated;
 
   const firstName = useMemo(() => {
     const n = user?.name?.trim();
@@ -74,7 +76,7 @@ export function ScanningScreen() {
 
   useEffect(() => {
     if (!user?.id) {
-      setHasCompletedCalibration(false);
+      setLocalCalibrated(false);
       setCalibrationHydrated(true);
       return;
     }
@@ -82,14 +84,14 @@ export function ScanningScreen() {
     setCalibrationHydrated(false);
     isUserCalibrated(user.id).then((done) => {
       if (!cancelled) {
-        setHasCompletedCalibration(done);
+        setLocalCalibrated(done);
         setCalibrationHydrated(true);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, user?.calibration]);
 
   const clearImage = useCallback(() => {
     setPickedImage(null);
@@ -154,23 +156,6 @@ export function ScanningScreen() {
 
       setScanBusy(true);
       try {
-        if (!hasCompletedCalibration) {
-          await submitReferenceCalibration(
-            pick,
-            user.id,
-            DEFAULT_CALIBRATION_REFERENCE,
-          );
-          if (cancelled) return;
-          await setUserCalibrated(user.id);
-          setHasCompletedCalibration(true);
-          clearImage();
-          Alert.alert(
-            "Calibration saved",
-            "Calibration complete. You can now scan food images.",
-          );
-          return;
-        }
-
         const res = await analyzeFoodFromImage(pick, user.id);
         if (cancelled) return;
         if (!res) {
@@ -195,7 +180,7 @@ export function ScanningScreen() {
         setEditFoodName("");
         setEditCaloriesText("");
         Alert.alert(
-          hasCompletedCalibration ? "Scan failed" : "Calibration failed",
+          "Scan failed",
           e instanceof Error ? e.message : "Unable to process this image.",
         );
       } finally {
@@ -215,7 +200,6 @@ export function ScanningScreen() {
   ]);
 
   const showConfirmSheet =
-    hasCompletedCalibration &&
     pickedImage?.uri &&
     !scanBusy &&
     detectedCalories != null &&
@@ -256,47 +240,63 @@ export function ScanningScreen() {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <View style={[styles.headerRow, { paddingTop: insets.top + Spacing.sm }]}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {firstName.slice(0, 1).toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.headerTitle}>CalGenie</Text>
+        {/* <TouchableOpacity
+          style={styles.bellWrap}
+          accessibilityRole="button"
+          accessibilityLabel="Notifications"
+          activeOpacity={0.7}
+        >
+          <Ionicons name="notifications-outline" size={22} color="#E8E8E8" />
+          <View style={styles.bellDot} />
+        </TouchableOpacity> */}
+      </View>
+
       <ScrollView
         style={styles.root}
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.sm }]}
+        contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerRow}>
+
+        {!hasCompletedCalibration && (
           <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
+            style={styles.warningBanner}
+            onPress={() => navigation.navigate("MainTabs", { screen: "ProfileTab" } as never)}
+            activeOpacity={0.9}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="warning" size={20} color={CORAL} />
+            <View style={styles.warningTextContainer}>
+              <Text style={styles.warningTitle}>
+                For better results, add a reference object.
+              </Text>
+              <Text style={styles.warningSubtitle}>
+                Tap to complete camera calibration now
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={CORAL} />
           </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {firstName.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.headerTitle}>CalGenie</Text>
-          {/* <TouchableOpacity
-            style={styles.bellWrap}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
-            activeOpacity={0.7}
-          >
-            <Ionicons name="notifications-outline" size={22} color="#E8E8E8" />
-            <View style={styles.bellDot} />
-          </TouchableOpacity> */}
-        </View>
+        )}
 
         {!calibrationHydrated ? (
           <Text style={styles.hint}>Loading calibration state...</Text>
         ) : !user?.id ? (
           <Text style={styles.hint}>
             Sign in with an account that returns a user id to enable scanning.
-          </Text>
-        ) : !hasCompletedCalibration ? (
-          <Text style={styles.hint}>
-            First image calibrates with a card-sized reference in frame.
           </Text>
         ) : null}
 
@@ -482,6 +482,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   backBtn: {
     marginRight: Spacing.sm,
@@ -530,6 +531,31 @@ const styles = StyleSheet.create({
     color: "#9A9A9A",
     marginBottom: Spacing.sm,
     lineHeight: 20,
+  },
+  warningBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 149, 135, 0.12)",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 149, 135, 0.25)",
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  warningTextContainer: {
+    flex: 1,
+  },
+  warningTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    color: CORAL,
+  },
+  warningSubtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#A0A0A0",
+    marginTop: 2,
   },
   topActions: {
     flexDirection: "row",

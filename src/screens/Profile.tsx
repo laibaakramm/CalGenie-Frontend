@@ -1,9 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { submitReferenceCalibration } from "../services/foodDetectionService";
+import { setUserCalibrated } from "../services/calibrationStorage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
-import { updateProfile } from "../services/authService";
+import { updateProfile, getGenderOptions, type GenderOption } from "../services/authService";
 import { useAuth } from "../store/authStore";
 import { Design } from "../utils/designSystem";
 import { BorderRadius, FontSize, Spacing } from "../utils/theme";
@@ -33,6 +37,72 @@ export function ProfileScreen() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [profileCalImage, setProfileCalImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [calLoading, setCalLoading] = useState(false);
+
+  const [genderOptions, setGenderOptions] = useState<GenderOption[]>([
+    { label: "Male", value: "MALE" },
+    { label: "Female", value: "FEMALE" }
+  ]);
+
+  useEffect(() => {
+    let active = true;
+    getGenderOptions().then((opts) => {
+      if (active && opts && opts.length > 0) {
+        setGenderOptions(opts);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
+
+  const getGenderLabel = (val: string) => {
+    const option = genderOptions.find((o) => o.value?.toUpperCase() === val?.toUpperCase());
+    return option ? option.label : val;
+  };
+
+  const pickProfileCalibrationImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== ImagePicker.PermissionStatus.GRANTED) {
+      Alert.alert("Permission needed", "Photo library access is required to upload an image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      setProfileCalImage(result.assets[0]);
+    }
+  };
+
+  const handleAddCalibration = async () => {
+    if (!profileCalImage || !user?.id) return;
+    setCalLoading(true);
+    try {
+      const res = await submitReferenceCalibration(
+        {
+          uri: profileCalImage.uri,
+          mimeType: profileCalImage.mimeType ?? null,
+          fileName: profileCalImage.fileName ?? null,
+        },
+        user.id,
+        "credit_card"
+      );
+      await setUserCalibrated(user.id);
+      updateUser({ calibration: res.calibration });
+      setProfileCalImage(null);
+      Alert.alert("Calibration Added", "Camera calibrated successfully!");
+    } catch (e) {
+      Alert.alert("Calibration Failed", e instanceof Error ? e.message : "Failed to calibrate.");
+    } finally {
+      setCalLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -175,14 +245,48 @@ export function ProfileScreen() {
             error={errors.age}
             variant="dark"
           />
-          <CustomInput
-            label="GENDER"
-            value={gender}
-            onChangeText={setGender}
-            placeholder="male or female"
-            error={errors.gender}
-            variant="dark"
-          />
+          <View style={{ zIndex: 1000, position: "relative" }}>
+            <TouchableOpacity onPress={() => setIsGenderDropdownOpen((p) => !p)} activeOpacity={0.7}>
+              <View pointerEvents="none">
+                <CustomInput
+                  label="GENDER"
+                  value={getGenderLabel(gender)}
+                  editable={false}
+                  placeholder="Select Gender"
+                  error={errors.gender}
+                  rightIcon={<Ionicons name="chevron-down" size={18} color={Design.onSurfaceVariant} />}
+                  variant="dark"
+                />
+              </View>
+            </TouchableOpacity>
+            {isGenderDropdownOpen && (
+              <View style={styles.dropdownContainer}>
+                {genderOptions.map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setGender(opt.value);
+                      setIsGenderDropdownOpen(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownItemText,
+                        gender?.toUpperCase() === opt.value?.toUpperCase() && styles.dropdownItemTextSelected,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                    {gender?.toUpperCase() === opt.value?.toUpperCase() && (
+                      <Ionicons name="checkmark" size={18} color={Design.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
           <Text style={styles.metricsSectionLabel}>VITALITY METRIC</Text>
           <View style={styles.metricsCard}>
@@ -196,6 +300,79 @@ export function ProfileScreen() {
             <View style={styles.metricGap} />
             <MetricRow label="Suggestion" value={computed.suggestion} isLast />
           </View>
+
+          <Text style={styles.metricsSectionLabel}>CAMERA CALIBRATION</Text>
+          {user?.calibration ? (
+            <View style={styles.calibrationAddedCard}>
+              <View style={styles.calibrationHeader}>
+                <Ionicons name="lock-closed-outline" size={18} color="#50C878" />
+                <Text style={styles.calibrationAddedTitle}>Calibration Permanent</Text>
+              </View>
+              <Text style={styles.calibrationAddedBody}>
+                Your camera has been successfully calibrated for accurate food volume and calorie estimation.
+              </Text>
+              <View style={styles.calibrationDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Reference object</Text>
+                  <Text style={styles.detailValue}>
+                    {user.calibration.referenceObject === "credit_card" ? "Credit Card" : user.calibration.referenceObject || "Credit Card"}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Device model</Text>
+                  <Text style={styles.detailValue}>{user.calibration.deviceModel || "Unknown"}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Focal length</Text>
+                  <Text style={styles.detailValue}>
+                    {user.calibration.focalLengthPx ? `${Math.round(user.calibration.focalLengthPx)} px` : "N/A"}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Pixels per mm</Text>
+                  <Text style={styles.detailValue}>
+                    {user.calibration.pixelsPerMmAtCalibration ? `${Number(user.calibration.pixelsPerMmAtCalibration).toFixed(2)} px/mm` : "N/A"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.calibrationCard}>
+              <Text style={styles.calibrationTitle}>Add Camera Calibration</Text>
+              <Text style={styles.calibrationBody}>
+                To accurately measure food volume and calories, upload an image with a credit card-sized reference object in the frame.
+              </Text>
+              
+              <TouchableOpacity 
+                style={styles.profileUploadBtn} 
+                onPress={pickProfileCalibrationImage}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="cloud-upload-outline" size={20} color={Design.primary} />
+                <Text style={styles.profileUploadBtnText}>
+                  {profileCalImage ? "Change Image" : "Select Calibration Image"}
+                </Text>
+              </TouchableOpacity>
+
+              {profileCalImage && (
+                <View style={styles.previewContainer}>
+                  <Image 
+                    source={{ uri: profileCalImage.uri }} 
+                    style={styles.previewImage} 
+                    resizeMode="cover"
+                  />
+                  <CustomButton
+                    title="Add Calibration"
+                    onPress={handleAddCalibration}
+                    loading={calLoading}
+                    disabled={calLoading}
+                    style={styles.addCalButton}
+                    textStyle={styles.addCalButtonText}
+                  />
+                </View>
+              )}
+            </View>
+          )}
 
           {errors.general ? <Text style={styles.errorText}>{errors.general}</Text> : null}
           {saveMessage ? <Text style={styles.successText}>{saveMessage}</Text> : null}
@@ -378,5 +555,142 @@ const styles = StyleSheet.create({
     color: Design.errorSoft,
     fontWeight: "700",
     fontSize: FontSize.md,
+  },
+  calibrationCard: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
+    marginBottom: Spacing.md,
+  },
+  calibrationTitle: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: Design.display,
+    marginBottom: Spacing.xs,
+  },
+  calibrationBody: {
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    color: Design.onSurfaceVariant,
+    marginBottom: Spacing.md,
+  },
+  profileUploadBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    backgroundColor: Design.surfaceContainerHighest,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Design.outlineVariant,
+  },
+  profileUploadBtnText: {
+    color: Design.primary,
+    fontWeight: "600",
+    fontSize: FontSize.md,
+  },
+  previewContainer: {
+    marginTop: Spacing.md,
+    alignItems: "center",
+    width: "100%",
+  },
+  previewImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  addCalButton: {
+    backgroundColor: "#50C878",
+    borderRadius: BorderRadius.lg,
+    width: "100%",
+    minHeight: 48,
+  },
+  addCalButtonText: {
+    color: "#0A0A0A",
+    fontWeight: "800",
+    fontSize: FontSize.md,
+  },
+  calibrationAddedCard: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Design.surfaceContainerHigh,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(80, 200, 120, 0.25)",
+  },
+  calibrationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  calibrationAddedTitle: {
+    fontSize: FontSize.md,
+    fontWeight: "700",
+    color: "#50C878",
+  },
+  calibrationAddedBody: {
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    color: Design.onSurfaceVariant,
+    marginBottom: Spacing.md,
+  },
+  calibrationDetails: {
+    backgroundColor: Design.surfaceContainerLow,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  detailLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: "600",
+    color: Design.onSurfaceVariant,
+  },
+  detailValue: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    color: Design.display,
+  },
+  dropdownContainer: {
+    position: "absolute",
+    top: 74,
+    left: 0,
+    right: 0,
+    backgroundColor: Design.surfaceContainerHigh,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Design.outlineVariant,
+    zIndex: 9999,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Design.outlineVariant,
+  },
+  dropdownItemText: {
+    color: Design.onSurfaceVariant,
+    fontSize: FontSize.md,
+    fontWeight: "500",
+  },
+  dropdownItemTextSelected: {
+    color: Design.primary,
+    fontWeight: "700",
   },
 });

@@ -1,4 +1,4 @@
-import { ApiError, apiRequestFirstPath, apiRequestAuthFirstPath } from "./apiClient";
+import { ApiError, apiRequest, apiRequestAuthFirstPath, apiRequestFirstPath } from "./apiClient";
 
 export type Gender = "male" | "female" | string;
 
@@ -21,6 +21,7 @@ export interface AuthUser {
   height?: number;
   age?: number;
   gender?: Gender;
+  calibration?: any;
 }
 
 export interface AuthResponse {
@@ -137,6 +138,12 @@ function normalizeAuthResponse(
     readOptionalUserId(nested?.userId) ??
     readOptionalUserId(nested?._id);
 
+  const calibration =
+    userSource?.calibration ??
+    data?.calibration ??
+    nested?.calibration ??
+    undefined;
+
   return {
     token,
     user: {
@@ -148,6 +155,7 @@ function normalizeAuthResponse(
       height,
       age,
       gender,
+      calibration,
     },
   };
 }
@@ -213,4 +221,27 @@ export async function updateProfile(
     },
     token,
   );
+}
+
+export interface GenderOption {
+  label: string;
+  value: string;
+}
+
+export async function getGenderOptions(): Promise<GenderOption[]> {
+  try {
+    const res = await apiRequest<{ options?: GenderOption[] }>("/genders", {
+      method: "GET",
+    });
+    return res.options ?? [
+      { label: "Male", value: "MALE" },
+      { label: "Female", value: "FEMALE" }
+    ];
+  } catch (error) {
+    console.error("Failed to fetch genders, using static defaults:", error);
+    return [
+      { label: "Male", value: "MALE" },
+      { label: "Female", value: "FEMALE" }
+    ];
+  }
 }

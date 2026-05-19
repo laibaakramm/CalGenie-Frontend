@@ -1,6 +1,9 @@
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -8,12 +11,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
-  Image,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { submitReferenceCalibration } from "../../services/foodDetectionService";
-import { setUserCalibrated } from "../../services/calibrationStorage";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowRightIcon,
@@ -26,8 +25,10 @@ import {
   MailIcon,
   UserIcon,
 } from "../../components";
-import { register as registerApi } from "../../services/authService";
+import { register as registerApi, getGenderOptions, type GenderOption } from "../../services/authService";
+import { setUserCalibrated } from "../../services/calibrationStorage";
 import { upsertDailyCalorieGoal } from "../../services/dashboardService";
+import { submitReferenceCalibration } from "../../services/foodDetectionService";
 import { useAuth } from "../../store/authStore";
 import { isAuthenticatedApiToken } from "../../store/dashboardOverviewStore";
 import type { RootStackParamList } from "../../types";
@@ -48,7 +49,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [gender, setGender] = useState("");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
-  const { setSession, setDailyCalorieGoal, user } = useAuth();
+  const { setSession, setDailyCalorieGoal, user, updateUser } = useAuth();
 
   const [step, setStep] = useState<"profile" | "goal" | "calibration">("profile");
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -66,6 +67,29 @@ export function RegisterScreen({ navigation }: Props) {
   const [calibrationImage, setCalibrationImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [genderOptions, setGenderOptions] = useState<GenderOption[]>([
+    { label: "Male", value: "MALE" },
+    { label: "Female", value: "FEMALE" }
+  ]);
+
+  React.useEffect(() => {
+    let active = true;
+    getGenderOptions().then((opts) => {
+      if (active && opts && opts.length > 0) {
+        setGenderOptions(opts);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
+
+  const getGenderLabel = (val: string) => {
+    const option = genderOptions.find((o) => o.value === val);
+    return option ? option.label : val;
+  };
 
   const validateProfile = (): boolean => {
     const next: Record<string, string> = {};
@@ -138,10 +162,8 @@ export function RegisterScreen({ navigation }: Props) {
     return "Maintain";
   };
 
-  const normalizeGenderForApi = (value: string): "male" | "female" => {
-    const normalized = value.trim().toLowerCase();
-    if (normalized.startsWith("m")) return "male";
-    return "female";
+  const normalizeGenderForApi = (value: string): string => {
+    return value;
   };
 
   const handlePrimaryAction = async () => {
@@ -210,7 +232,7 @@ export function RegisterScreen({ navigation }: Props) {
       if (calibrationImage && user?.id) {
         setLoading(true);
         try {
-          await submitReferenceCalibration(
+          const res = await submitReferenceCalibration(
             {
               uri: calibrationImage.uri,
               mimeType: calibrationImage.mimeType ?? null,
@@ -220,6 +242,7 @@ export function RegisterScreen({ navigation }: Props) {
             "credit_card"
           );
           await setUserCalibrated(user.id);
+          updateUser({ calibration: res.calibration });
         } catch (e) {
           Alert.alert("Calibration Failed", e instanceof Error ? e.message : "Failed to calibrate.");
           setLoading(false);
@@ -318,15 +341,48 @@ export function RegisterScreen({ navigation }: Props) {
           placeholder="e.g. 25"
           variant="dark"
         />
-        <CustomInput
-          label="GENDER"
-          value={gender}
-          onChangeText={setGender}
-          error={errors.gender}
-          rightIcon={<DropdownIcon color={Design.onSurfaceVariant} />}
-          placeholder="e.g. Male"
-          variant="dark"
-        />
+        <View style={{ zIndex: 1000, position: "relative" }}>
+          <TouchableOpacity onPress={() => setIsGenderDropdownOpen((p) => !p)} activeOpacity={0.7}>
+            <View pointerEvents="none">
+              <CustomInput
+                label="GENDER"
+                value={getGenderLabel(gender)}
+                editable={false}
+                error={errors.gender}
+                rightIcon={<DropdownIcon color={Design.onSurfaceVariant} />}
+                placeholder="Select Gender"
+                variant="dark"
+              />
+            </View>
+          </TouchableOpacity>
+          {isGenderDropdownOpen && (
+            <View style={styles.dropdownContainer}>
+              {genderOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setGender(opt.value);
+                    setIsGenderDropdownOpen(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      gender === opt.value && styles.dropdownItemTextSelected,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  {gender === opt.value && (
+                    <Ionicons name="checkmark" size={18} color={Design.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
         <CustomInput
           label="HEIGHT (CM)"
           value={height}
@@ -389,7 +445,7 @@ export function RegisterScreen({ navigation }: Props) {
             <Text style={styles.profileHint}>
               Upload an image with a credit card to calibrate the app for accurate calorie tracking.
             </Text>
-            
+
             <TouchableOpacity style={styles.uploadBtn} onPress={pickCalibrationImage}>
               <Text style={styles.uploadBtnText}>
                 {calibrationImage ? "Change Image" : "Upload Image"}
@@ -397,9 +453,9 @@ export function RegisterScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             {calibrationImage && (
-              <Image 
-                source={{ uri: calibrationImage.uri }} 
-                style={styles.previewImage} 
+              <Image
+                source={{ uri: calibrationImage.uri }}
+                style={styles.previewImage}
                 resizeMode="cover"
               />
             )}
@@ -423,11 +479,11 @@ export function RegisterScreen({ navigation }: Props) {
       >
         <CustomButton
           title={
-            step === "profile" 
-              ? "Create Account" 
-              : step === "goal" 
-                ? "Continue to Calibration" 
-                : calibrationImage 
+            step === "profile"
+              ? "Create Account"
+              : step === "goal"
+                ? "Continue to Calibration"
+                : calibrationImage
                   ? "Calibrate & Finish"
                   : "Skip & Finish"
           }
@@ -596,5 +652,40 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.md,
+  },
+  dropdownContainer: {
+    position: "absolute",
+    top: 74,
+    left: 0,
+    right: 0,
+    backgroundColor: Design.surfaceContainerHigh,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Design.outlineVariant,
+    zIndex: 9999,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Design.outlineVariant,
+  },
+  dropdownItemText: {
+    color: Design.onSurfaceVariant,
+    fontSize: FontSize.md,
+    fontWeight: "500",
+  },
+  dropdownItemTextSelected: {
+    color: Design.primary,
+    fontWeight: "700",
   },
 });
