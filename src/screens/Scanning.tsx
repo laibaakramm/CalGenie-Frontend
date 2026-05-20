@@ -18,13 +18,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  isUserCalibrated,
-  setUserCalibrated,
+  isUserCalibrated
 } from "../services/calibrationStorage";
 import {
   analyzeFoodFromImage,
-  type PickedImage,
-  submitReferenceCalibration,
+  type PickedImage
 } from "../services/foodDetectionService";
 import { useAuth } from "../store/authStore";
 import {
@@ -367,9 +365,9 @@ export function ScanningScreen() {
           >
             <View style={styles.sheetHeaderRow}>
               <Text style={styles.sheetTitle}>Confirm Details</Text>
-              <View style={styles.matchBadge}>
+              {/* <View style={styles.matchBadge}>
                 <Text style={styles.matchBadgeText}>98% MATCH</Text>
-              </View>
+              </View> */}
             </View>
 
             <Text style={styles.fieldLabel}>FOOD NAME</Text>

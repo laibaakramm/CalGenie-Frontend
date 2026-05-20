@@ -1,13 +1,13 @@
-import { useNavigation } from "@react-navigation/native";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Image, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import { submitReferenceCalibration } from "../services/foodDetectionService";
-import { setUserCalibrated } from "../services/calibrationStorage";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
-import { updateProfile, getGenderOptions, type GenderOption } from "../services/authService";
+import { getGenderOptions, updateProfile, type GenderOption } from "../services/authService";
+import { setUserCalibrated } from "../services/calibrationStorage";
+import { submitReferenceCalibration } from "../services/foodDetectionService";
 import { useAuth } from "../store/authStore";
 import { Design } from "../utils/designSystem";
 import { BorderRadius, FontSize, Spacing } from "../utils/theme";
@@ -311,30 +311,7 @@ export function ProfileScreen() {
               <Text style={styles.calibrationAddedBody}>
                 Your camera has been successfully calibrated for accurate food volume and calorie estimation.
               </Text>
-              <View style={styles.calibrationDetails}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Reference object</Text>
-                  <Text style={styles.detailValue}>
-                    {user.calibration.referenceObject === "credit_card" ? "Credit Card" : user.calibration.referenceObject || "Credit Card"}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Device model</Text>
-                  <Text style={styles.detailValue}>{user.calibration.deviceModel || "Unknown"}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Focal length</Text>
-                  <Text style={styles.detailValue}>
-                    {user.calibration.focalLengthPx ? `${Math.round(user.calibration.focalLengthPx)} px` : "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Pixels per mm</Text>
-                  <Text style={styles.detailValue}>
-                    {user.calibration.pixelsPerMmAtCalibration ? `${Number(user.calibration.pixelsPerMmAtCalibration).toFixed(2)} px/mm` : "N/A"}
-                  </Text>
-                </View>
-              </View>
+
             </View>
           ) : (
             <View style={styles.calibrationCard}>
@@ -342,9 +319,9 @@ export function ProfileScreen() {
               <Text style={styles.calibrationBody}>
                 To accurately measure food volume and calories, upload an image with a credit card-sized reference object in the frame.
               </Text>
-              
-              <TouchableOpacity 
-                style={styles.profileUploadBtn} 
+
+              <TouchableOpacity
+                style={styles.profileUploadBtn}
                 onPress={pickProfileCalibrationImage}
                 activeOpacity={0.7}
               >
@@ -356,9 +333,9 @@ export function ProfileScreen() {
 
               {profileCalImage && (
                 <View style={styles.previewContainer}>
-                  <Image 
-                    source={{ uri: profileCalImage.uri }} 
-                    style={styles.previewImage} 
+                  <Image
+                    source={{ uri: profileCalImage.uri }}
+                    style={styles.previewImage}
                     resizeMode="cover"
                   />
                   <CustomButton
