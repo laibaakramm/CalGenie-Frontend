@@ -2,10 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CustomButton, CustomInput } from "../components";
-import { getGenderOptions, updateProfile, type GenderOption } from "../services/authService";
+import { DEFAULT_GENDER_OPTIONS, updateProfile } from "../services/authService";
 import { setUserCalibrated } from "../services/calibrationStorage";
 import { submitReferenceCalibration } from "../services/foodDetectionService";
 import { useAuth } from "../store/authStore";
@@ -37,37 +45,28 @@ export function ProfileScreen() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [profileCalImage, setProfileCalImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [profileCalImage, setProfileCalImage] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [calLoading, setCalLoading] = useState(false);
 
-  const [genderOptions, setGenderOptions] = useState<GenderOption[]>([
-    { label: "Male", value: "MALE" },
-    { label: "Female", value: "FEMALE" }
-  ]);
-
-  useEffect(() => {
-    let active = true;
-    getGenderOptions().then((opts) => {
-      if (active && opts && opts.length > 0) {
-        setGenderOptions(opts);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const genderOptions = DEFAULT_GENDER_OPTIONS;
 
   const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
 
   const getGenderLabel = (val: string) => {
-    const option = genderOptions.find((o) => o.value?.toUpperCase() === val?.toUpperCase());
+    const option = genderOptions.find(
+      (o) => o.value?.toUpperCase() === val?.toUpperCase(),
+    );
     return option ? option.label : val;
   };
 
   const pickProfileCalibrationImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert("Permission needed", "Photo library access is required to upload an image.");
+      Alert.alert(
+        "Permission needed",
+        "Photo library access is required to upload an image.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -91,14 +90,17 @@ export function ProfileScreen() {
           fileName: profileCalImage.fileName ?? null,
         },
         user.id,
-        "credit_card"
+        "credit_card",
       );
       await setUserCalibrated(user.id);
       updateUser({ calibration: res.calibration });
       setProfileCalImage(null);
       Alert.alert("Calibration Added", "Camera calibrated successfully!");
     } catch (e) {
-      Alert.alert("Calibration Failed", e instanceof Error ? e.message : "Failed to calibrate.");
+      Alert.alert(
+        "Calibration Failed",
+        e instanceof Error ? e.message : "Failed to calibrate.",
+      );
     } finally {
       setCalLoading(false);
     }
@@ -140,7 +142,8 @@ export function ProfileScreen() {
     const normalizedGender = gender.trim().toLowerCase();
 
     if (!name.trim()) nextErrors.name = "Name is required";
-    if (!Number.isFinite(ageNum) || ageNum <= 0) nextErrors.age = "Enter a valid age";
+    if (!Number.isFinite(ageNum) || ageNum <= 0)
+      nextErrors.age = "Enter a valid age";
     if (!Number.isFinite(weightNum) || weightNum <= 0)
       nextErrors.weight = "Enter a valid weight";
     if (!Number.isFinite(heightNum) || heightNum <= 0)
@@ -170,7 +173,10 @@ export function ProfileScreen() {
       try {
         await updateProfile(token, updates);
       } catch (e) {
-        setErrors({ general: e instanceof Error ? e.message : "Failed to sync profile to server" });
+        setErrors({
+          general:
+            e instanceof Error ? e.message : "Failed to sync profile to server",
+        });
         setLoading(false);
         return;
       }
@@ -246,7 +252,10 @@ export function ProfileScreen() {
             variant="dark"
           />
           <View style={{ zIndex: 1000, position: "relative" }}>
-            <TouchableOpacity onPress={() => setIsGenderDropdownOpen((p) => !p)} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => setIsGenderDropdownOpen((p) => !p)}
+              activeOpacity={0.7}
+            >
               <View pointerEvents="none">
                 <CustomInput
                   label="GENDER"
@@ -254,7 +263,13 @@ export function ProfileScreen() {
                   editable={false}
                   placeholder="Select Gender"
                   error={errors.gender}
-                  rightIcon={<Ionicons name="chevron-down" size={18} color={Design.onSurfaceVariant} />}
+                  rightIcon={
+                    <Ionicons
+                      name="chevron-down"
+                      size={18}
+                      color={Design.onSurfaceVariant}
+                    />
+                  }
                   variant="dark"
                 />
               </View>
@@ -274,13 +289,18 @@ export function ProfileScreen() {
                     <Text
                       style={[
                         styles.dropdownItemText,
-                        gender?.toUpperCase() === opt.value?.toUpperCase() && styles.dropdownItemTextSelected,
+                        gender?.toUpperCase() === opt.value?.toUpperCase() &&
+                          styles.dropdownItemTextSelected,
                       ]}
                     >
                       {opt.label}
                     </Text>
                     {gender?.toUpperCase() === opt.value?.toUpperCase() && (
-                      <Ionicons name="checkmark" size={18} color={Design.primary} />
+                      <Ionicons
+                        name="checkmark"
+                        size={18}
+                        color={Design.primary}
+                      />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -305,19 +325,28 @@ export function ProfileScreen() {
           {user?.calibration ? (
             <View style={styles.calibrationAddedCard}>
               <View style={styles.calibrationHeader}>
-                <Ionicons name="lock-closed-outline" size={18} color="#50C878" />
-                <Text style={styles.calibrationAddedTitle}>Calibration Permanent</Text>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color="#50C878"
+                />
+                <Text style={styles.calibrationAddedTitle}>
+                  Calibration Permanent
+                </Text>
               </View>
               <Text style={styles.calibrationAddedBody}>
-                Your camera has been successfully calibrated for accurate food volume and calorie estimation.
+                Your camera has been successfully calibrated for accurate food
+                volume and calorie estimation.
               </Text>
-
             </View>
           ) : (
             <View style={styles.calibrationCard}>
-              <Text style={styles.calibrationTitle}>Add Camera Calibration</Text>
+              <Text style={styles.calibrationTitle}>
+                Add Camera Calibration
+              </Text>
               <Text style={styles.calibrationBody}>
-                To accurately measure food volume and calories, upload an image with a credit card-sized reference object in the frame.
+                To accurately measure food volume and calories, upload an image
+                with a credit card-sized reference object in the frame.
               </Text>
 
               <TouchableOpacity
@@ -325,9 +354,15 @@ export function ProfileScreen() {
                 onPress={pickProfileCalibrationImage}
                 activeOpacity={0.7}
               >
-                <Ionicons name="cloud-upload-outline" size={20} color={Design.primary} />
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={20}
+                  color={Design.primary}
+                />
                 <Text style={styles.profileUploadBtnText}>
-                  {profileCalImage ? "Change Image" : "Select Calibration Image"}
+                  {profileCalImage
+                    ? "Change Image"
+                    : "Select Calibration Image"}
                 </Text>
               </TouchableOpacity>
 
@@ -351,8 +386,12 @@ export function ProfileScreen() {
             </View>
           )}
 
-          {errors.general ? <Text style={styles.errorText}>{errors.general}</Text> : null}
-          {saveMessage ? <Text style={styles.successText}>{saveMessage}</Text> : null}
+          {errors.general ? (
+            <Text style={styles.errorText}>{errors.general}</Text>
+          ) : null}
+          {saveMessage ? (
+            <Text style={styles.successText}>{saveMessage}</Text>
+          ) : null}
           <CustomButton
             title="Save profile"
             onPress={handleSave}

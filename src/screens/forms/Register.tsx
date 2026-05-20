@@ -25,7 +25,10 @@ import {
   MailIcon,
   UserIcon,
 } from "../../components";
-import { register as registerApi, getGenderOptions, type GenderOption } from "../../services/authService";
+import {
+  DEFAULT_GENDER_OPTIONS,
+  register as registerApi,
+} from "../../services/authService";
 import { setUserCalibrated } from "../../services/calibrationStorage";
 import { upsertDailyCalorieGoal } from "../../services/dashboardService";
 import { submitReferenceCalibration } from "../../services/foodDetectionService";
@@ -67,22 +70,7 @@ export function RegisterScreen({ navigation }: Props) {
   const [calibrationImage, setCalibrationImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [genderOptions, setGenderOptions] = useState<GenderOption[]>([
-    { label: "Male", value: "MALE" },
-    { label: "Female", value: "FEMALE" }
-  ]);
-
-  React.useEffect(() => {
-    let active = true;
-    getGenderOptions().then((opts) => {
-      if (active && opts && opts.length > 0) {
-        setGenderOptions(opts);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const genderOptions = DEFAULT_GENDER_OPTIONS;
 
   const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
 

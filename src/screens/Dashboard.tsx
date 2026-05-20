@@ -13,7 +13,13 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import Animated, {
+  useAnimatedProps,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle } from "react-native-svg";
 import { useAuth } from "../store/authStore";
 import {
   isAuthenticatedApiToken,
@@ -42,6 +48,77 @@ function formatRecentTime(raw: number): string {
   if (diffDays === 0) return `Today, ${timeText}`;
   if (diffDays === 1) return `Yesterday, ${timeText}`;
   return `${date.toLocaleDateString([], { month: "short", day: "numeric" })}, ${timeText}`;
+}
+
+const RING_SIZE = 270;
+const RING_STROKE = 22;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_CENTER = RING_SIZE / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const RING_TRACK_COLOR = "#2A2A2A";
+const RING_GREEN = "#58F592";
+const RING_RED = Colors.error;
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+type CalorieProgressRingProps = {
+  progress: number;
+  overGoal: boolean;
+  consumed: number;
+  goal: number | null;
+};
+
+function CalorieProgressRing({
+  progress,
+  overGoal,
+  consumed,
+  goal,
+}: CalorieProgressRingProps) {
+  const animatedProgress = useSharedValue(0);
+  const fillRatio = Math.min(Math.max(progress, 0), 1);
+  const ringColor = overGoal ? RING_RED : RING_GREEN;
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(fillRatio, { duration: 700 });
+  }, [animatedProgress, fillRatio]);
+
+  const animatedCircleProps = useAnimatedProps(() => ({
+    strokeDashoffset: RING_CIRCUMFERENCE * (1 - animatedProgress.value),
+  }));
+
+  return (
+    <View style={ringStyles.wrapper}>
+      <Svg width={RING_SIZE} height={RING_SIZE} style={ringStyles.svg}>
+        <Circle
+          cx={RING_CENTER}
+          cy={RING_CENTER}
+          r={RING_RADIUS}
+          stroke={RING_TRACK_COLOR}
+          strokeWidth={RING_STROKE}
+          fill="none"
+        />
+        <AnimatedCircle
+          cx={RING_CENTER}
+          cy={RING_CENTER}
+          r={RING_RADIUS}
+          stroke={ringColor}
+          strokeWidth={RING_STROKE}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          animatedProps={animatedCircleProps}
+          transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
+        />
+      </Svg>
+      <View style={ringStyles.inner}>
+        <Text style={ringStyles.label}>CALORIES</Text>
+        <Text style={ringStyles.value}>{Math.round(consumed)}</Text>
+        <Text style={ringStyles.units}>
+          of {goal != null ? Math.round(goal) : 0} KCAL
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 export function DashboardScreen() {
@@ -94,7 +171,11 @@ export function DashboardScreen() {
       : 0;
 
   const overGoal = displayGoal != null && consumedCalories > displayGoal;
-  const ringColor = overGoal ? Colors.error : Colors.primary;
+  const ringColor = overGoal ? RING_RED : RING_GREEN;
+  const calorieProgress =
+    displayGoal != null && displayGoal > 0
+      ? consumedCalories / displayGoal
+      : 0;
   const recentThreeMeals = useMemo(() => logs.slice(0, 3), [logs]);
   const firstName = useMemo(() => {
     const full = user?.name?.trim();
@@ -173,19 +254,18 @@ export function DashboardScreen() {
         }
       >
         <View style={styles.circleCard}>
-          <View style={styles.circleOuter}>
-            <View style={[styles.calorieCircle, { borderColor: ringColor }]}>
-              <Text style={styles.circleLabel}>CALORIES</Text>
-              <Text style={styles.circleCalories}>
-                {Math.round(consumedCalories)}
-              </Text>
-              <Text style={styles.circleUnits}>
-                of {displayGoal != null ? Math.round(displayGoal) : 0} KCAL
-              </Text>
-            </View>
-          </View>
+          <CalorieProgressRing
+            progress={calorieProgress}
+            overGoal={overGoal}
+            consumed={consumedCalories}
+            goal={displayGoal}
+          />
           <Text style={[styles.goalStatusText, { color: ringColor }]}>
-            {overGoal ? "Goal exceeded" : `${progressPercentage}% complete`}
+            {overGoal
+              ? "Goal exceeded"
+              : displayGoal != null && displayGoal > 0
+                ? `${progressPercentage}% complete`
+                : "Set a daily goal to track progress"}
           </Text>
         </View>
 
@@ -360,47 +440,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Colors.white,
   },
-  circleOuter: {
-    width: 270,
-    height: 270,
-    borderRadius: BorderRadius.full,
-    borderWidth: 22,
-    borderColor: "#2A2A2A",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: Spacing.sm,
-  },
   circleCard: {
     alignItems: "center",
     marginBottom: Spacing.lg,
     paddingTop: Spacing.md,
-  },
-  calorieCircle: {
-    width: 205,
-    height: 205,
-    borderRadius: BorderRadius.full,
-    borderWidth: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#111111",
-  },
-  circleLabel: {
-    fontSize: 12,
-    color: "#A0A0A0",
-    letterSpacing: 2,
-    fontWeight: "700",
-    marginBottom: Spacing.xs,
-  },
-  circleCalories: {
-    fontSize: FontSize.xl + 16,
-    fontWeight: "800",
-    color: Colors.white,
-  },
-  circleUnits: {
-    fontSize: FontSize.sm,
-    color: "#98A09A",
-    fontWeight: "700",
-    marginTop: Spacing.xs,
   },
   goalStatusText: {
     marginTop: Spacing.sm,
@@ -584,5 +627,44 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 } as ViewStyle["shadowOffset"],
     shadowRadius: 16,
     elevation: 8,
+  },
+});
+
+const ringStyles = StyleSheet.create({
+  wrapper: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.sm,
+  },
+  svg: {
+    position: "absolute",
+  },
+  inner: {
+    width: 205,
+    height: 205,
+    borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#111111",
+  },
+  label: {
+    fontSize: 12,
+    color: "#A0A0A0",
+    letterSpacing: 2,
+    fontWeight: "700",
+    marginBottom: Spacing.xs,
+  },
+  value: {
+    fontSize: FontSize.xl + 16,
+    fontWeight: "800",
+    color: Colors.white,
+  },
+  units: {
+    fontSize: FontSize.sm,
+    color: "#98A09A",
+    fontWeight: "700",
+    marginTop: Spacing.xs,
   },
 });

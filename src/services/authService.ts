@@ -228,20 +228,12 @@ export interface GenderOption {
   value: string;
 }
 
+/** Backend has no gender-options route; values match profile/register API (`male` | `female`). */
+export const DEFAULT_GENDER_OPTIONS: GenderOption[] = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+];
+
 export async function getGenderOptions(): Promise<GenderOption[]> {
-  try {
-    const res = await apiRequest<{ options?: GenderOption[] }>("/genders", {
-      method: "GET",
-    });
-    return res.options ?? [
-      { label: "Male", value: "MALE" },
-      { label: "Female", value: "FEMALE" }
-    ];
-  } catch (error) {
-    console.error("Failed to fetch genders, using static defaults:", error);
-    return [
-      { label: "Male", value: "MALE" },
-      { label: "Female", value: "FEMALE" }
-    ];
-  }
+  return DEFAULT_GENDER_OPTIONS;
 }
